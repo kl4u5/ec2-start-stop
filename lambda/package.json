@@ -1,0 +1,18 @@
+{
+  "name": "ec2-start-stop-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function for EC2 start/stop automation",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.620.0",
+    "@aws-sdk/client-ssm": "^3.620.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0"
+  }
+}

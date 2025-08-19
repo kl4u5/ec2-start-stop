@@ -1,0 +1,55 @@
+{
+  "name": "ec2-start-stop-cdk",
+  "version": "1.0.0",
+  "description": "AWS CDK project for automated EC2 instance start/stop scheduling",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:lambda": "cd lambda && pnpm run build",
+    "build:all": "pnpm run build:lambda && pnpm run build",
+    "watch": "tsc -w",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
+    "cdk": "cdk",    
+    "deploy:dev": "pnpm run build:all && cdk deploy --profile kbj-aws-dev",
+    "deploy:prod": "pnpm run build:all && cdk deploy --profile sps-production",
+    "diff": "pnpm run build:all && cdk diff",
+    "synth": "pnpm run build:all && cdk synth",
+    "bootstrap": "cdk bootstrap",
+    "destroy": "cdk destroy",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "keywords": [
+    "aws",
+    "cdk",
+    "ec2",
+    "automation",
+    "scheduling"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "aws-cdk": "^2.149.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.149.0",
+    "constructs": "^10.3.0",
+    "@aws-sdk/client-ec2": "^3.620.0",
+    "@aws-sdk/client-ssm": "^3.620.0",
+    "source-map-support": "^0.5.21"
+  },
+  "packageManager": "pnpm@9.6.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
