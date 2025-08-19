@@ -49,21 +49,23 @@ export interface TimeAction {
 /**
  * Validates a schedule configuration
  */
-export function validateScheduleConfig(config: any): config is SchedulesConfiguration {
+export function validateScheduleConfig(config: unknown): config is SchedulesConfiguration {
   if (!config || typeof config !== 'object') {
     return false;
   }
 
-  if (!Array.isArray(config.schedules)) {
+  const obj = config as Record<string, unknown>;
+
+  if (!Array.isArray(obj.schedules)) {
     return false;
   }
 
-  if (!Array.isArray(config.maintainers)) {
+  if (!Array.isArray(obj.maintainers)) {
     return false;
   }
 
   // Validate each schedule
-  for (const schedule of config.schedules) {
+  for (const schedule of obj.schedules) {
     if (!validateSchedule(schedule)) {
       return false;
     }
@@ -75,28 +77,30 @@ export function validateScheduleConfig(config: any): config is SchedulesConfigur
 /**
  * Validates a single schedule
  */
-export function validateSchedule(schedule: any): schedule is Schedule {
+export function validateSchedule(schedule: unknown): schedule is Schedule {
   if (!schedule || typeof schedule !== 'object') {
     return false;
   }
 
-  if (typeof schedule.name !== 'string' || schedule.name.trim() === '') {
+  const obj = schedule as Record<string, unknown>;
+
+  if (typeof obj.name !== 'string' || (obj.name as string).trim() === '') {
     return false;
   }
 
-  if (typeof schedule.enabled !== 'boolean') {
+  if (typeof obj.enabled !== 'boolean') {
     return false;
   }
 
-  if (typeof schedule.timezone !== 'string' || schedule.timezone.trim() === '') {
+  if (typeof obj.timezone !== 'string' || (obj.timezone as string).trim() === '') {
     return false;
   }
 
   // Validate time format for each day if present
   const timeFields = [...WEEKDAY_KEYS, 'default'];
   for (const field of timeFields) {
-    if (schedule[field] !== undefined) {
-      if (!validateTimeFormat(schedule[field])) {
+    if (obj[field] !== undefined) {
+      if (!validateTimeFormat(obj[field] as string)) {
         return false;
       }
     }

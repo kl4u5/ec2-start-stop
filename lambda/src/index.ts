@@ -31,7 +31,7 @@ interface Clients {
   ssmClient?: SSMClient;
 }
 
-export const handler = async (event: any, context?: any, clients: Clients = {}): Promise<void> => {
+export const handler = async (event: unknown, context?: unknown, clients: Clients = {}): Promise<void> => {
   // Use injected clients or defaults
   const ec2Client = clients.ec2Client || defaultEc2Client;
   const ssmClient = clients.ssmClient || defaultSsmClient;
