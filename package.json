@@ -1,7 +1,6 @@
 {
   "name": "ec2-start-stop-cdk",
   "version": "1.0.0",
-  "type": "module",
   "description": "AWS CDK project for automated EC2 instance start/stop scheduling",
   "main": "dist/index.js",
   "scripts": {
@@ -27,9 +26,8 @@
     "format:check": "prettier --check .",
     "check": "pnpm run format:check && pnpm run lint && pnpm test",
     "fix": "pnpm run format && pnpm run lint:fix",
-    "precommit": "node scripts/precommit.mjs",
-    "precommit:simple": "pnpm run format && pnpm run lint:fix && pnpm run build:all && pnpm run test",
-    "precommit:bash": "bash scripts/precommit.sh 2>/dev/null || (echo \"❌ Pre-commit checks failed. Fix the issues above and try again.\" && exit 1)",
+    "precommit": "node scripts/precommit.js",
+    "precommit:simple": "pnpm run format && pnpm run lint:fix && pnpm run build:all && pnpm run synth && pnpm run test",
     "prepare": "husky"
   },
   "keywords": [

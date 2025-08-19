@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { spawn } from 'child_process';
-import { platform } from 'os';
+const { spawn } = require('child_process');
+const { platform } = require('os');
 
 const isWindows = platform() === 'win32';
 
