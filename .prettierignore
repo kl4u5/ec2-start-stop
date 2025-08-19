@@ -20,7 +20,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Scripts
+# Scripts (shell and Node.js scripts)
 scripts/
 
 # Package manager

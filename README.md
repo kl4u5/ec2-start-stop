@@ -345,6 +345,43 @@ pnpm run lint
 pnpm run lint:fix
 ```
 
+### Code Quality & Pre-commit Hooks
+
+This project includes automated code quality checks that run before every
+commit:
+
+```bash
+# Manual pre-commit check (recommended before committing)
+pnpm run precommit
+
+# Quick format and lint fix
+pnpm run fix
+
+# Check code quality without fixing
+pnpm run check
+```
+
+**Pre-commit Hook:** Automatically runs before `git commit` and includes:
+
+- ✅ Code formatting (Prettier)
+- ✅ Lint fixes (ESLint)
+- ✅ Build verification (TypeScript)
+- ✅ Test execution (All 6 tests)
+
+**Windows Users:** The pre-commit hooks work seamlessly on:
+
+- ✅ **Git Bash** (recommended)
+- ✅ **PowerShell**
+- ✅ **Command Prompt**
+- ✅ **VS Code integrated terminal**
+
+If you encounter issues with the pre-commit hook, use the fallback:
+
+```bash
+# Fallback for Windows environments
+pnpm run precommit:simple
+```
+
 ### Build Management
 
 ```bash
@@ -475,25 +512,23 @@ aws cloudformation describe-stacks --stack-name Ec2StartStopStack
 
 ## FAQ
 
-**Q: Can I use different regions?**  
-A: Yes, deploy the stack in each region where you have EC2 instances.
+**Q: Can I use different regions?** A: Yes, deploy the stack in each region
+where you have EC2 instances.
 
-**Q: How do I handle DST changes?**  
-A: Luxon automatically handles DST transitions for IANA timezones.
+**Q: How do I handle DST changes?** A: Luxon automatically handles DST
+transitions for IANA timezones.
 
-**Q: Can I test schedules before deploying?**  
-A: Yes, use the test suite: `pnpm test` and review the mock scenarios.
+**Q: Can I test schedules before deploying?** A: Yes, use the test suite:
+`pnpm test` and review the mock scenarios.
 
-**Q: What happens if Lambda fails?**  
-A: EventBridge will retry on the next 15-minute interval. Check CloudWatch Logs
-for errors.
+**Q: What happens if Lambda fails?** A: EventBridge will retry on the next
+15-minute interval. Check CloudWatch Logs for errors.
 
-**Q: Can I use this with Auto Scaling Groups?**  
-A: Individual instances in ASGs can be managed, but consider ASG scheduling
-instead for better integration.
+**Q: Can I use this with Auto Scaling Groups?** A: Individual instances in ASGs
+can be managed, but consider ASG scheduling instead for better integration.
 
-**Q: How do I backup my schedule configuration?**  
-A: Export from Parameter Store:
+**Q: How do I backup my schedule configuration?** A: Export from Parameter
+Store:
 `aws ssm get-parameter --name "/ec2-start-stop/schedules" --query "Parameter.Value" --output text > backup.json`
 
 ## Contributing

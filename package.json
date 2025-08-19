@@ -27,7 +27,9 @@
     "format:check": "prettier --check .",
     "check": "pnpm run format:check && pnpm run lint && pnpm test",
     "fix": "pnpm run format && pnpm run lint:fix",
-    "precommit": "bash scripts/precommit.sh || (echo '❌ Pre-commit checks failed. Fix the issues above and try again.' && exit 1)",
+    "precommit": "node scripts/precommit.mjs",
+    "precommit:simple": "pnpm run format && pnpm run lint:fix && pnpm run build:all && pnpm run test",
+    "precommit:bash": "bash scripts/precommit.sh 2>/dev/null || (echo \"❌ Pre-commit checks failed. Fix the issues above and try again.\" && exit 1)",
     "prepare": "husky"
   },
   "keywords": [
