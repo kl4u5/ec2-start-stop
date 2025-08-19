@@ -39,7 +39,7 @@
     "automation",
     "scheduling"
   ],
-  "author": "",
+  "author": "Klaus Bjorn Jensen <kl4u5.j3n53n@gmail.com>",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^24.3.0",

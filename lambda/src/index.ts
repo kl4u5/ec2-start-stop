@@ -1,11 +1,22 @@
+/**
+ * EC2 Start/Stop Automation Lambda Function
+ *
+ * Automatically starts and stops EC2 instances based on configurable schedules
+ * stored in AWS Parameter Store with timezone-aware scheduling.
+ *
+ * @author Klaus Bjorn Jensen <kl4u5.j3n53n@gmail.com>
+ * @created 2025-08-19
+ * @license MIT
+ */
+
 import {
-  EC2Client,
   DescribeInstancesCommand,
+  EC2Client,
+  Instance,
   StartInstancesCommand,
   StopInstancesCommand,
-  Instance,
 } from '@aws-sdk/client-ec2';
-import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
+import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { DateTime } from 'luxon';
 
 // Import types from our local types module
@@ -14,14 +25,14 @@ import { validateScheduleConfig } from './types';
 
 // Import constants
 import {
-  ENV_VARS,
+  ACTIONS,
   DEFAULTS,
-  TAG_NAMES,
-  TIME_FORMATS,
+  ENV_VARS,
+  INSTANCE_STATES,
   SCHEDULE_VALUES,
   SEPARATORS,
-  INSTANCE_STATES,
-  ACTIONS,
+  TAG_NAMES,
+  TIME_FORMATS,
   WEEKDAY_KEYS,
 } from './constants';
 

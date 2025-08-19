@@ -546,6 +546,12 @@ Store:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 for details.
 
+**Created by:** Klaus Bjorn Jensen <kl4u5.j3n53n@gmail.com> (August 19, 2025)
+
+The MIT License allows you to use this software for any purpose, including
+commercial use, modification, and distribution, at your own risk and without
+warranty.
+
 ## Support
 
 - **Issues**: Report bugs and feature requests via GitHub Issues
