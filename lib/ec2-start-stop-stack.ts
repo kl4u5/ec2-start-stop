@@ -7,7 +7,8 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import * as path from 'path';
-import { DEFAULT_SCHEDULES_CONFIG } from './schedules-config';
+import { DEFAULT_SCHEDULES_CONFIG } from '../lambda/src/types';
+import { DEFAULTS, ENV_VARS } from '../lambda/src/constants';
 
 export class Ec2StartStopStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -15,7 +16,7 @@ export class Ec2StartStopStack extends cdk.Stack {
 
     // Parameter Store parameter for schedules configuration
     const schedulesParameter = new ssm.StringParameter(this, 'Ec2SchedulesParameter', {
-      parameterName: '/ec2-start-stop/schedules',
+      parameterName: DEFAULTS.SCHEDULES_PARAMETER_NAME,
       description: 'EC2 start/stop schedules configuration',
       stringValue: JSON.stringify(DEFAULT_SCHEDULES_CONFIG, null, 2),
       tier: ssm.ParameterTier.STANDARD,
@@ -58,7 +59,7 @@ export class Ec2StartStopStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/dist')),
       timeout: cdk.Duration.minutes(5),
       environment: {
-        SCHEDULES_PARAMETER_NAME: schedulesParameter.parameterName,
+        [ENV_VARS.SCHEDULES_PARAMETER_NAME]: schedulesParameter.parameterName,
       },
       description: 'Automatically starts and stops EC2 instances based on schedules',
       logRetention: logs.RetentionDays.TWO_MONTHS,
