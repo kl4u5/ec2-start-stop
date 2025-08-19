@@ -24,7 +24,6 @@ const defaultEc2Client = new EC2Client({});
 const defaultSsmClient = new SSMClient({});
 
 const SCHEDULES_PARAMETER_NAME = process.env[ENV_VARS.SCHEDULES_PARAMETER_NAME] || DEFAULTS.SCHEDULES_PARAMETER_NAME;
-const TOLERANCE_MINUTES = DEFAULTS.TOLERANCE_MINUTES;
 
 // Interface for dependency injection
 interface Clients {
@@ -169,24 +168,31 @@ async function processInstance(instance: Instance, schedulesConfig: SchedulesCon
   }
 
   // Parse the day schedule (format: "start;stop" or "never;stop" or "start;never")
-  const timeActions = parseDaySchedule(daySchedule);
+  const scheduleInfo = parseDaySchedule(daySchedule);
   
   // Check if any action should be triggered now
   const currentTime = timeInTimezone.toFormat(TIME_FORMATS.SCHEDULE_TIME);
   
-  for (const timeAction of timeActions) {
-    if (shouldTriggerAction(timeInTimezone, timeAction.time)) {
-      console.log(`Triggering ${timeAction.action} action for instance ${instance.InstanceId} at ${timeInTimezone.toFormat(TIME_FORMATS.SCHEDULE_TIME)} (scheduled: ${timeAction.time})`);
-      await executeAction(instance, timeAction.action, ec2Client);
-    } else {
-      console.log(`No action needed for instance ${instance.InstanceId}: current time ${timeInTimezone.toFormat(TIME_FORMATS.SCHEDULE_TIME)}, scheduled ${timeAction.action} at ${timeAction.time}`);
-    }
+  const shouldStart = shouldTriggerStartAction(currentTime, scheduleInfo.startTime, scheduleInfo.stopTime);
+  const shouldStop = shouldTriggerStopAction(currentTime, scheduleInfo.startTime, scheduleInfo.stopTime);
+  
+  if (shouldStart) {
+    console.log(`Should start instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`);
+    await executeAction(instance, ACTIONS.START, ec2Client);
+  } else if (shouldStop) {
+    console.log(`Should stop instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`);
+    await executeAction(instance, ACTIONS.STOP, ec2Client);
+  } else {
+    console.log(`No action needed for instance ${instance.InstanceId}: current time ${currentTime}, schedule ${daySchedule}`);
   }
 }
 
-function parseDaySchedule(schedule: string): TimeAction[] {
-  const actions: TimeAction[] = [];
-  
+interface ScheduleInfo {
+  startTime: string;
+  stopTime: string;
+}
+
+function parseDaySchedule(schedule: string): ScheduleInfo {
   // Handle different separators (, or ;)
   const parts = schedule.includes(SEPARATORS.SCHEDULE_PARTS) 
     ? schedule.split(SEPARATORS.SCHEDULE_PARTS) 
@@ -194,35 +200,57 @@ function parseDaySchedule(schedule: string): TimeAction[] {
   
   if (parts.length === 2) {
     const [startTime, stopTime] = parts.map(p => p.trim());
-    
-    if (startTime !== SCHEDULE_VALUES.NEVER && startTime) {
-      actions.push({ time: startTime, action: ACTIONS.START });
-    }
-    
-    if (stopTime !== SCHEDULE_VALUES.NEVER && stopTime) {
-      actions.push({ time: stopTime, action: ACTIONS.STOP });
-    }
+    return {
+      startTime: startTime,
+      stopTime: stopTime
+    };
   }
 
-  return actions;
+  return {
+    startTime: SCHEDULE_VALUES.NEVER,
+    stopTime: SCHEDULE_VALUES.NEVER
+  };
 }
 
-function shouldTriggerAction(currentTime: DateTime, scheduledTime: string): boolean {
-  // Parse the scheduled time (HH:mm format)
-  const [scheduledHour, scheduledMinute] = scheduledTime.split(SEPARATORS.TIME_PARTS).map(Number);
-  
-  // Create a DateTime object for the scheduled time in the same timezone
-  const scheduledDateTime = currentTime.set({ 
-    hour: scheduledHour, 
-    minute: scheduledMinute, 
-    second: 0, 
-    millisecond: 0 
-  });
+/**
+ * Determines if an instance should be started based on the schedule and current time.
+ * Start if: scheduledStartTime != never AND scheduledStartTime <= currentTime AND (scheduledStopTime > currentTime OR scheduledStopTime == never)
+ */
+function shouldTriggerStartAction(currentTime: string, scheduledStartTime: string, scheduledStopTime: string): boolean {
+  // Don't start if start time is never
+  if (scheduledStartTime === SCHEDULE_VALUES.NEVER) {
+    return false;
+  }
 
-  // Calculate the difference in minutes
-  const diffMinutes = Math.abs(currentTime.diff(scheduledDateTime, 'minutes').minutes);
-  
-  return diffMinutes <= TOLERANCE_MINUTES;
+  // Don't start if current time is before start time
+  if (currentTime < scheduledStartTime) {
+    return false;
+  }
+
+  // Don't start if stop time is defined and current time is past stop time
+  if (scheduledStopTime !== SCHEDULE_VALUES.NEVER && currentTime >= scheduledStopTime) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Determines if an instance should be stopped based on the schedule and current time.
+ * Stop if: scheduledStartTime == never OR (scheduledStopTime != never AND scheduledStopTime <= currentTime)
+ */
+function shouldTriggerStopAction(currentTime: string, scheduledStartTime: string, scheduledStopTime: string): boolean {
+  // Stop if there's no start time (should always be stopped)
+  if (scheduledStartTime === SCHEDULE_VALUES.NEVER) {
+    return true;
+  }
+
+  // Stop if stop time is defined and current time is past stop time
+  if (scheduledStopTime !== SCHEDULE_VALUES.NEVER && currentTime >= scheduledStopTime) {
+    return true;
+  }
+
+  return false;
 }
 
 async function executeAction(instance: Instance, action: 'start' | 'stop', ec2Client: EC2Client): Promise<void> {

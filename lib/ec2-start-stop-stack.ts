@@ -7,7 +7,7 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import * as path from 'path';
-import { DEFAULT_SCHEDULES_CONFIG } from '../lambda/src/types';
+import { DEFAULT_SCHEDULES_CONFIG } from '../lambda/src/default-config';
 import { DEFAULTS, ENV_VARS } from '../lambda/src/constants';
 
 export class Ec2StartStopStack extends cdk.Stack {

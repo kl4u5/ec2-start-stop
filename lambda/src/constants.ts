@@ -10,7 +10,6 @@ export const ENV_VARS = {
 // Default values
 export const DEFAULTS = {
   SCHEDULES_PARAMETER_NAME: '/ec2-start-stop/schedules',
-  TOLERANCE_MINUTES: 2,
 } as const;
 
 // AWS tag names
