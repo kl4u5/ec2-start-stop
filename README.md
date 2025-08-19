@@ -1,23 +1,33 @@
 # EC2 Start/Stop Automation
 
-This AWS CDK project automates the starting and stopping of EC2 instances based on configurable schedules stored in AWS Parameter Store. Perfect for cost optimization by automatically managing development, testing, and non-production environments.
+This AWS CDK project automates the starting and stopping of EC2 instances based
+on configurable schedules stored in AWS Parameter Store. Perfect for cost
+optimization by automatically managing development, testing, and non-production
+environments.
 
 ## 💰 **Cost Savings**
 
 - **Automatic shutdown** of non-production instances during off-hours
 - **Timezone-aware scheduling** for global teams
 - **Minimal overhead**: ~0.09 DKK (~$0.01) per month to run
-- **High ROI**: Save 21+ DKK monthly per t3.micro instance with 8-hour daily shutdown
+- **High ROI**: Save 21+ DKK monthly per t3.micro instance with 8-hour daily
+  shutdown
 
 ## Features
 
-- **🚀 Automated EC2 Management**: Start and stop instances based on flexible schedules
-- **🌍 Timezone Support**: Full IANA timezone support with DST handling via Luxon
-- **📅 Flexible Scheduling**: Different schedules for each day with fallback defaults
-- **🏷️ Tag-Based Selection**: Uses `start-stop-schedule` tag for instance identification
-- **⚙️ Parameter Store Configuration**: Centralized, easily updatable configuration
+- **🚀 Automated EC2 Management**: Start and stop instances based on flexible
+  schedules
+- **🌍 Timezone Support**: Full IANA timezone support with DST handling via
+  Luxon
+- **📅 Flexible Scheduling**: Different schedules for each day with fallback
+  defaults
+- **🏷️ Tag-Based Selection**: Uses `start-stop-schedule` tag for instance
+  identification
+- **⚙️ Parameter Store Configuration**: Centralized, easily updatable
+  configuration
 - **⏰ EventBridge Integration**: Reliable 15-minute interval execution
-- **🎯 Range-Based Logic**: Intelligent scheduling that considers entire time ranges, not just exact moments
+- **🎯 Range-Based Logic**: Intelligent scheduling that considers entire time
+  ranges, not just exact moments
 
 ## Architecture
 
@@ -29,7 +39,8 @@ EventBridge Rule (15 min) → Lambda Function → EC2 API
 
 ## Schedule Configuration
 
-Schedules are stored in AWS Parameter Store at `/ec2-start-stop/schedules`. The configuration supports comprehensive scheduling patterns:
+Schedules are stored in AWS Parameter Store at `/ec2-start-stop/schedules`. The
+configuration supports comprehensive scheduling patterns:
 
 ```json
 {
@@ -40,7 +51,7 @@ Schedules are stored in AWS Parameter Store at `/ec2-start-stop/schedules`. The 
       "enabled": true,
       "timezone": "Europe/Berlin",
       "mo": "08:00;18:00",
-      "tu": "08:00;18:00", 
+      "tu": "08:00;18:00",
       "we": "08:00;18:00",
       "th": "08:00;18:00",
       "fr": "08:00;18:00",
@@ -71,8 +82,10 @@ Schedules are stored in AWS Parameter Store at `/ec2-start-stop/schedules`. The 
 
 - **name**: Unique identifier for the schedule (referenced by EC2 instance tags)
 - **enabled**: Boolean flag to enable/disable the entire schedule
-- **timezone**: IANA timezone name (e.g., "Europe/Berlin", "America/New_York", "UTC")
-- **Weekdays**: `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su` with format `"start_time;stop_time"`
+- **timezone**: IANA timezone name (e.g., "Europe/Berlin", "America/New_York",
+  "UTC")
+- **Weekdays**: `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su` with format
+  `"start_time;stop_time"`
 - **default**: Fallback schedule for days not explicitly defined
 
 ### Time Format Examples
@@ -87,26 +100,29 @@ Schedules are stored in AWS Parameter Store at `/ec2-start-stop/schedules`. The 
 
 The system uses **time range logic** rather than exact time matching:
 
-- **Start**: If current time is after start time AND before stop time (or stop is "never")
+- **Start**: If current time is after start time AND before stop time (or stop
+  is "never")
 - **Stop**: If start time is "never" OR current time is after stop time
 - **Evaluation**: Runs every 15 minutes, considers the entire daily time range
 
-This approach ensures instances are properly managed regardless of when the scheduler runs within the 15-minute window.
+This approach ensures instances are properly managed regardless of when the
+scheduler runs within the 15-minute window.
 
 ## EC2 Instance Configuration
 
 Tag your EC2 instances with the schedule name:
 
-| Key | Value |
-|-----|-------|
+| Key                   | Value                            |
+| --------------------- | -------------------------------- |
 | `start-stop-schedule` | Schedule name (case-insensitive) |
 
 **Examples:**
+
 ```bash
 # Tag for business hours schedule
 aws ec2 create-tags --resources i-1234567890abcdef0 --tags Key=start-stop-schedule,Value=business-hours
 
-# Tag for development servers  
+# Tag for development servers
 aws ec2 create-tags --resources i-0987654321fedcba0 --tags Key=start-stop-schedule,Value=dev-servers
 
 # Tag for always-on services
@@ -120,7 +136,8 @@ aws ec2 create-tags --resources i-abcdef1234567890 --tags Key=start-stop-schedul
 - **Node.js 22+** and **PNPM 9+**
 - **AWS CLI** configured with appropriate credentials
 - **AWS CDK CLI**: `npm install -g aws-cdk`
-- **AWS Account** with permissions to create Lambda, IAM, EventBridge, and Parameter Store resources
+- **AWS Account** with permissions to create Lambda, IAM, EventBridge, and
+  Parameter Store resources
 
 ### 1. Clone and Setup
 
@@ -156,7 +173,7 @@ pnpm run bootstrap
 # Deploy with default profile
 pnpm run deploy
 
-# Deploy with specific profile  
+# Deploy with specific profile
 pnpm run deploy -- --profile your-aws-profile
 ```
 
@@ -200,11 +217,13 @@ pnpm run deploy   # Deploy if changes look good
 ### Managing Schedules
 
 #### View Current Configuration
+
 ```bash
 aws ssm get-parameter --name "/ec2-start-stop/schedules" --query "Parameter.Value" --output text | jq .
 ```
 
 #### Update Schedules
+
 ```bash
 # Create schedules.json with your configuration
 cat > schedules.json << 'EOF'
@@ -212,7 +231,7 @@ cat > schedules.json << 'EOF'
   "description": "Production EC2 schedules",
   "schedules": [
     {
-      "name": "production-hours", 
+      "name": "production-hours",
       "enabled": true,
       "timezone": "Europe/London",
       "default": "06:00;22:00"
@@ -229,12 +248,14 @@ aws ssm put-parameter --name "/ec2-start-stop/schedules" --value file://schedule
 ### Monitoring and Troubleshooting
 
 #### Check Lambda Execution
+
 ```bash
 # View recent logs
 aws logs tail /aws/lambda/ec2-start-stop-function --follow
 ```
 
 #### Verify EC2 Instance Tags
+
 ```bash
 # List instances with start-stop-schedule tag
 aws ec2 describe-instances --filters "Name=tag-key,Values=start-stop-schedule" --query "Reservations[].Instances[].[InstanceId,Tags[?Key=='start-stop-schedule'].Value|[0],State.Name]" --output table
@@ -243,13 +264,14 @@ aws ec2 describe-instances --filters "Name=tag-key,Values=start-stop-schedule" -
 ### Common Use Cases
 
 #### Development Environment (9-5 weekdays only)
+
 ```json
 {
   "name": "dev-environment",
-  "enabled": true, 
+  "enabled": true,
   "timezone": "America/New_York",
   "mo": "09:00;17:00",
-  "tu": "09:00;17:00", 
+  "tu": "09:00;17:00",
   "we": "09:00;17:00",
   "th": "09:00;17:00",
   "fr": "09:00;17:00",
@@ -259,16 +281,18 @@ aws ec2 describe-instances --filters "Name=tag-key,Values=start-stop-schedule" -
 ```
 
 #### European Business Hours
+
 ```json
 {
   "name": "eu-business",
   "enabled": true,
-  "timezone": "Europe/Berlin", 
+  "timezone": "Europe/Berlin",
   "default": "08:00;18:00"
 }
 ```
 
 #### Always-On Production Services
+
 ```json
 {
   "name": "production-24x7",
@@ -279,9 +303,10 @@ aws ec2 describe-instances --filters "Name=tag-key,Values=start-stop-schedule" -
 ```
 
 #### Maintenance Mode (Always Off)
+
 ```json
 {
-  "name": "maintenance", 
+  "name": "maintenance",
   "enabled": true,
   "timezone": "UTC",
   "default": "never;never"
@@ -309,7 +334,7 @@ pnpm run watch
 # Run all tests
 pnpm test
 
-# Run tests in watch mode  
+# Run tests in watch mode
 pnpm run test:watch
 
 # Run tests with coverage report
@@ -342,7 +367,7 @@ pnpm run build
 ├── bin/
 │   └── ec2-start-stop.ts          # CDK app entry point
 ├── lib/
-│   └── ec2-start-stop-stack.ts    # CDK stack definition  
+│   └── ec2-start-stop-stack.ts    # CDK stack definition
 ├── lambda/
 │   ├── src/
 │   │   ├── index.ts               # Lambda function handler
@@ -367,17 +392,18 @@ pnpm run build
 
 ### Monthly Costs (EU-Central-1)
 
-| Service | Usage | Cost (USD) | Cost (DKK) |
-|---------|-------|------------|------------|
-| Lambda | 2,880 invocations, ~3s each | $0.00 | 0.00 (free tier) |
-| EventBridge | 2,880 events | $0.003 | 0.02 |
-| Parameter Store | Standard params | $0.00 | 0.00 (free tier) |
-| CloudWatch Logs | ~3MB storage | $0.01 | 0.07 |
-| **Total** | | **~$0.013** | **~0.09 DKK** |
+| Service         | Usage                       | Cost (USD)  | Cost (DKK)       |
+| --------------- | --------------------------- | ----------- | ---------------- |
+| Lambda          | 2,880 invocations, ~3s each | $0.00       | 0.00 (free tier) |
+| EventBridge     | 2,880 events                | $0.003      | 0.02             |
+| Parameter Store | Standard params             | $0.00       | 0.00 (free tier) |
+| CloudWatch Logs | ~3MB storage                | $0.01       | 0.07             |
+| **Total**       |                             | **~$0.013** | **~0.09 DKK**    |
 
 ### ROI Calculation
 
 **Example**: Single t3.micro instance
+
 - **Instance cost**: €0.0116/hour = 0.08 DKK/hour
 - **Savings** (8 hours off daily): 0.64 DKK/day = 19.2 DKK/month
 - **Scheduler cost**: 0.09 DKK/month
@@ -391,6 +417,7 @@ The scheduler pays for itself within hours of deployment!
 ### Instance Not Starting/Stopping
 
 1. **Verify instance tags:**
+
    ```bash
    aws ec2 describe-instances --instance-ids i-XXXXXXXXX --query "Reservations[].Instances[].Tags"
    ```
@@ -400,9 +427,10 @@ The scheduler pays for itself within hours of deployment!
    - Verify schedule exists in Parameter Store configuration
 
 3. **Validate timezone and time:**
+
    ```bash
    # Check current time in schedule timezone
-   date -d "TZ='Europe/Berlin'" 
+   date -d "TZ='Europe/Berlin'"
    ```
 
 4. **Review Lambda logs:**
@@ -412,13 +440,13 @@ The scheduler pays for itself within hours of deployment!
 
 ### Common Issues
 
-| Issue | Symptoms | Solution |
-|-------|----------|----------|
-| **Schedule not found** | "references unknown schedule" in logs | Add schedule to Parameter Store config |
-| **Invalid timezone** | "invalid timezone" error | Use valid IANA timezone (e.g., "UTC", "Europe/London") |
-| **No instances found** | "No instances found with tag" | Verify tag key is exactly `start-stop-schedule` |
-| **Permission denied** | IAM errors in logs | Check Lambda execution role has EC2 and SSM permissions |
-| **Schedule disabled** | "schedule disabled" in logs | Set `"enabled": true` in schedule config |
+| Issue                  | Symptoms                              | Solution                                                |
+| ---------------------- | ------------------------------------- | ------------------------------------------------------- |
+| **Schedule not found** | "references unknown schedule" in logs | Add schedule to Parameter Store config                  |
+| **Invalid timezone**   | "invalid timezone" error              | Use valid IANA timezone (e.g., "UTC", "Europe/London")  |
+| **No instances found** | "No instances found with tag"         | Verify tag key is exactly `start-stop-schedule`         |
+| **Permission denied**  | IAM errors in logs                    | Check Lambda execution role has EC2 and SSM permissions |
+| **Schedule disabled**  | "schedule disabled" in logs           | Set `"enabled": true` in schedule config                |
 
 ### Debug Commands
 
@@ -426,7 +454,7 @@ The scheduler pays for itself within hours of deployment!
 # Test Lambda function manually
 aws lambda invoke --function-name ec2-start-stop-function --payload '{}' output.json
 
-# View Parameter Store configuration  
+# View Parameter Store configuration
 aws ssm get-parameter --name "/ec2-start-stop/schedules" | jq .Parameter.Value
 
 # List all managed instances
@@ -439,8 +467,10 @@ aws cloudformation describe-stacks --stack-name Ec2StartStopStack
 ## Security Considerations
 
 - **Least Privilege**: Lambda role has minimal required permissions
-- **Resource Scoping**: EC2 permissions use wildcards (required for describe operations)
-- **Parameter Store**: Schedules stored in standard parameters (consider SecureString for sensitive data)
+- **Resource Scoping**: EC2 permissions use wildcards (required for describe
+  operations)
+- **Parameter Store**: Schedules stored in standard parameters (consider
+  SecureString for sensitive data)
 - **Network**: Lambda runs in AWS VPC by default (no custom VPC required)
 
 ## FAQ
@@ -455,13 +485,16 @@ A: Luxon automatically handles DST transitions for IANA timezones.
 A: Yes, use the test suite: `pnpm test` and review the mock scenarios.
 
 **Q: What happens if Lambda fails?**  
-A: EventBridge will retry on the next 15-minute interval. Check CloudWatch Logs for errors.
+A: EventBridge will retry on the next 15-minute interval. Check CloudWatch Logs
+for errors.
 
 **Q: Can I use this with Auto Scaling Groups?**  
-A: Individual instances in ASGs can be managed, but consider ASG scheduling instead for better integration.
+A: Individual instances in ASGs can be managed, but consider ASG scheduling
+instead for better integration.
 
 **Q: How do I backup my schedule configuration?**  
-A: Export from Parameter Store: `aws ssm get-parameter --name "/ec2-start-stop/schedules" --query "Parameter.Value" --output text > backup.json`
+A: Export from Parameter Store:
+`aws ssm get-parameter --name "/ec2-start-stop/schedules" --query "Parameter.Value" --output text > backup.json`
 
 ## Contributing
 
@@ -475,7 +508,8 @@ A: Export from Parameter Store: `aws ssm get-parameter --name "/ec2-start-stop/s
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
+for details.
 
 ## Support
 

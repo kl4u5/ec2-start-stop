@@ -7,7 +7,7 @@ describe('Ec2StartStopStack', () => {
   it('should create required resources', () => {
     const app = new cdk.App();
     const stack = new Ec2StartStopStack(app, 'TestStack');
-    
+
     const template = Template.fromStack(stack);
 
     // Verify Lambda function is created
@@ -46,7 +46,7 @@ describe('Ec2StartStopStack', () => {
   it('should have correct IAM permissions', () => {
     const app = new cdk.App();
     const stack = new Ec2StartStopStack(app, 'TestStack');
-    
+
     const template = Template.fromStack(stack);
 
     // Check for Lambda execution role with proper permissions
@@ -56,12 +56,12 @@ describe('Ec2StartStopStack', () => {
           {
             Effect: 'Allow',
             Principal: {
-              Service: 'lambda.amazonaws.com'
+              Service: 'lambda.amazonaws.com',
             },
-            Action: 'sts:AssumeRole'
-          }
-        ]
-      }
+            Action: 'sts:AssumeRole',
+          },
+        ],
+      },
     });
 
     // Find the Lambda functions (main + log retention)

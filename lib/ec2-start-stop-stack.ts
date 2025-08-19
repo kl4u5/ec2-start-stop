@@ -25,9 +25,7 @@ export class Ec2StartStopStack extends cdk.Stack {
     // IAM role for the Lambda function
     const lambdaRole = new iam.Role(this, 'Ec2StartStopLambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
-      ],
+      managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')],
       inlinePolicies: {
         Ec2StartStopPolicy: new iam.PolicyDocument({
           statements: [

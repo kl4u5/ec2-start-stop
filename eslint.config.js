@@ -46,13 +46,6 @@ export default [
     },
   },
   {
-    ignores: [
-      'dist/',
-      'node_modules/',
-      'cdk.out/',
-      '**/*.js',
-      '**/*.d.ts',
-      'lambda/dist/',
-    ],
+    ignores: ['dist/', 'node_modules/', 'cdk.out/', '**/*.js', '**/*.d.ts', 'lambda/dist/'],
   },
 ];

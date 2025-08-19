@@ -1,0 +1,26 @@
+# Build outputs
+dist/
+lambda/dist/
+cdk.out/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Generated files
+*.d.ts
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Package manager
+pnpm-lock.yaml
+yarn.lock
+package-lock.json

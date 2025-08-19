@@ -119,7 +119,7 @@ export function validateTimeFormat(timeString: string): boolean {
 
   // Handle different separators (, or ;)
   const parts = timeString.includes(';') ? timeString.split(';') : timeString.split(',');
-  
+
   if (parts.length !== 2) {
     return false;
   }
@@ -156,6 +156,6 @@ export function createSchedule(config: Partial<Schedule> & Pick<Schedule, 'name'
     fr: config.fr,
     sa: config.sa,
     su: config.su,
-    default: config.default
+    default: config.default,
   };
 }

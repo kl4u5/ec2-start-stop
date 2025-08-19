@@ -10,18 +10,18 @@ describe('EC2 Start/Stop Lambda Handler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Set up environment variables
     process.env.SCHEDULES_PARAMETER_NAME = '/test/schedules';
     process.env.AWS_REGION = 'us-east-1';
-    
+
     // Create mock clients with send methods
     mockSSMClient = {
-      send: vi.fn()
+      send: vi.fn(),
     };
-    
+
     mockEC2Client = {
-      send: vi.fn()
+      send: vi.fn(),
     };
   });
 
@@ -31,21 +31,23 @@ describe('EC2 Start/Stop Lambda Handler', () => {
       Parameter: {
         Value: JSON.stringify({
           schedules: [],
-          maintainers: []
-        })
-      }
+          maintainers: [],
+        }),
+      },
     });
 
     // Mock EC2 response with no instances
     (mockEC2Client.send as any).mockResolvedValue({
-      Reservations: []
+      Reservations: [],
     });
 
-    await expect(handler({}, undefined, {
-      ec2Client: mockEC2Client as EC2Client,
-      ssmClient: mockSSMClient as SSMClient
-    })).resolves.toBeUndefined();
-    
+    await expect(
+      handler({}, undefined, {
+        ec2Client: mockEC2Client as EC2Client,
+        ssmClient: mockSSMClient as SSMClient,
+      })
+    ).resolves.toBeUndefined();
+
     expect(mockSSMClient.send).toHaveBeenCalledTimes(1);
     expect(mockEC2Client.send).toHaveBeenCalledTimes(1);
   });
@@ -58,10 +60,10 @@ describe('EC2 Start/Stop Lambda Handler', () => {
           enabled: true,
           timezone: 'UTC',
           mo: '08:00;18:00',
-          default: '08:00;18:00'
-        }
+          default: '08:00;18:00',
+        },
       ],
-      maintainers: ['test@example.com']
+      maintainers: ['test@example.com'],
     };
 
     const mockInstances = {
@@ -71,28 +73,28 @@ describe('EC2 Start/Stop Lambda Handler', () => {
             {
               InstanceId: 'i-123456789',
               State: { Name: 'stopped' },
-              Tags: [
-                { Key: TAG_NAMES.START_STOP_SCHEDULE, Value: 'test-schedule' }
-              ]
-            }
-          ]
-        }
-      ]
+              Tags: [{ Key: TAG_NAMES.START_STOP_SCHEDULE, Value: 'test-schedule' }],
+            },
+          ],
+        },
+      ],
     };
 
     (mockSSMClient.send as any).mockResolvedValue({
-      Parameter: { Value: JSON.stringify(mockSchedule) }
+      Parameter: { Value: JSON.stringify(mockSchedule) },
     });
 
     (mockEC2Client.send as any)
       .mockResolvedValueOnce(mockInstances) // DescribeInstances
       .mockResolvedValueOnce({}); // StartInstances or StopInstances
 
-    await expect(handler({}, undefined, {
-      ec2Client: mockEC2Client as EC2Client,
-      ssmClient: mockSSMClient as SSMClient
-    })).resolves.toBeUndefined();
-    
+    await expect(
+      handler({}, undefined, {
+        ec2Client: mockEC2Client as EC2Client,
+        ssmClient: mockSSMClient as SSMClient,
+      })
+    ).resolves.toBeUndefined();
+
     // Should call SSM once and EC2 at least once (describe)
     expect(mockSSMClient.send).toHaveBeenCalledTimes(1);
     expect(mockEC2Client.send).toHaveBeenCalledWith(expect.any(Object));
@@ -107,10 +109,10 @@ describe('EC2 Start/Stop Lambda Handler', () => {
           enabled: true,
           timezone: 'America/New_York', // EST/EDT timezone
           mo: '09:00;17:00',
-          default: '09:00;17:00'
-        }
+          default: '09:00;17:00',
+        },
       ],
-      maintainers: ['test@example.com']
+      maintainers: ['test@example.com'],
     };
 
     const mockInstances = {
@@ -120,28 +122,28 @@ describe('EC2 Start/Stop Lambda Handler', () => {
             {
               InstanceId: 'i-timezone-test',
               State: { Name: 'stopped' },
-              Tags: [
-                { Key: TAG_NAMES.START_STOP_SCHEDULE, Value: 'ny-schedule' }
-              ]
-            }
-          ]
-        }
-      ]
+              Tags: [{ Key: TAG_NAMES.START_STOP_SCHEDULE, Value: 'ny-schedule' }],
+            },
+          ],
+        },
+      ],
     };
 
     (mockSSMClient.send as any).mockResolvedValue({
-      Parameter: { Value: JSON.stringify(mockSchedule) }
+      Parameter: { Value: JSON.stringify(mockSchedule) },
     });
 
     (mockEC2Client.send as any)
       .mockResolvedValueOnce(mockInstances) // DescribeInstances
       .mockResolvedValueOnce({}); // Potential action
 
-    await expect(handler({}, undefined, {
-      ec2Client: mockEC2Client as EC2Client,
-      ssmClient: mockSSMClient as SSMClient
-    })).resolves.toBeUndefined();
-    
+    await expect(
+      handler({}, undefined, {
+        ec2Client: mockEC2Client as EC2Client,
+        ssmClient: mockSSMClient as SSMClient,
+      })
+    ).resolves.toBeUndefined();
+
     // Verify the handler processes the timezone correctly (no errors thrown)
     expect(mockSSMClient.send).toHaveBeenCalledTimes(1);
     expect(mockEC2Client.send).toHaveBeenCalledWith(expect.any(Object));
@@ -155,10 +157,10 @@ describe('EC2 Start/Stop Lambda Handler', () => {
           enabled: true,
           timezone: 'Invalid/Timezone',
           mo: '09:00;17:00',
-          default: '09:00;17:00'
-        }
+          default: '09:00;17:00',
+        },
       ],
-      maintainers: ['test@example.com']
+      maintainers: ['test@example.com'],
     };
 
     const mockInstances = {
@@ -168,26 +170,26 @@ describe('EC2 Start/Stop Lambda Handler', () => {
             {
               InstanceId: 'i-invalid-tz',
               State: { Name: 'stopped' },
-              Tags: [
-                { Key: TAG_NAMES.START_STOP_SCHEDULE, Value: 'invalid-schedule' }
-              ]
-            }
-          ]
-        }
-      ]
+              Tags: [{ Key: TAG_NAMES.START_STOP_SCHEDULE, Value: 'invalid-schedule' }],
+            },
+          ],
+        },
+      ],
     };
 
     (mockSSMClient.send as any).mockResolvedValue({
-      Parameter: { Value: JSON.stringify(mockSchedule) }
+      Parameter: { Value: JSON.stringify(mockSchedule) },
     });
 
     (mockEC2Client.send as any).mockResolvedValueOnce(mockInstances); // DescribeInstances
 
-    await expect(handler({}, undefined, {
-      ec2Client: mockEC2Client as EC2Client,
-      ssmClient: mockSSMClient as SSMClient
-    })).resolves.toBeUndefined();
-    
+    await expect(
+      handler({}, undefined, {
+        ec2Client: mockEC2Client as EC2Client,
+        ssmClient: mockSSMClient as SSMClient,
+      })
+    ).resolves.toBeUndefined();
+
     // Should not call EC2 start/stop commands due to invalid timezone
     expect(mockSSMClient.send).toHaveBeenCalledTimes(1);
     expect(mockEC2Client.send).toHaveBeenCalledTimes(1); // Only DescribeInstances

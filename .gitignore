@@ -15,6 +15,10 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# IDE settings
+.vscode/
+.idea/
+
 # TypeScript compilation outputs
 *.js
 *.d.ts

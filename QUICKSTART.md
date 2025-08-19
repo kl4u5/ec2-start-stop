@@ -3,6 +3,7 @@
 ## Prerequisites
 
 Make sure you have:
+
 - **Node.js 22+** installed
 - **PNPM 9+** package manager (`npm install -g pnpm`)
 - **AWS CLI** configured (`aws configure`)
@@ -115,7 +116,8 @@ aws ssm put-parameter \
 
 ## Monitoring
 
-The function runs automatically every 15 minutes via EventBridge. Monitor execution:
+The function runs automatically every 15 minutes via EventBridge. Monitor
+execution:
 
 ```bash
 # View recent function executions
@@ -129,17 +131,17 @@ aws events list-rules --name-prefix "Ec2StartStopScheduleRule"
 
 Based on the default configuration, instances tagged with:
 
-| Tag Value | Schedule | Behavior |
-|-----------|----------|----------|
-| `sps-tid-server` | Europe/Berlin, 06:00-22:00 daily | Runs 16 hours/day |
-| `dev-servers` | Europe/Berlin, 07:00-22:00 weekdays only | Weekends off |
-| `production-servers` | UTC, 06:00-23:00 with weekend hours | Different weekend schedule |
-| `test-environment` | America/New_York, 09:00-17:00 weekdays | Currently disabled |
+| Tag Value            | Schedule                                 | Behavior                   |
+| -------------------- | ---------------------------------------- | -------------------------- |
+| `sps-tid-server`     | Europe/Berlin, 06:00-22:00 daily         | Runs 16 hours/day          |
+| `dev-servers`        | Europe/Berlin, 07:00-22:00 weekdays only | Weekends off               |
+| `production-servers` | UTC, 06:00-23:00 with weekend hours      | Different weekend schedule |
+| `test-environment`   | America/New_York, 09:00-17:00 weekdays   | Currently disabled         |
 
 ## Next Steps
 
 - **Customize schedules** in Parameter Store to match your needs
-- **Monitor CloudWatch Logs** to verify correct operation  
+- **Monitor CloudWatch Logs** to verify correct operation
 - **Add more instances** by tagging them with appropriate schedule names
 - **Set up CloudWatch Alarms** for Lambda function errors (optional)
 
@@ -158,4 +160,5 @@ aws ssm put-parameter --name "/ec2-start-stop/schedules" --value file://current-
 pnpm run destroy
 ```
 
-🎉 **You're all set!** Your EC2 instances will now start and stop automatically according to their schedules.
+🎉 **You're all set!** Your EC2 instances will now start and stop automatically
+according to their schedules.

@@ -25,15 +25,6 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": [
-    "lib/**/*",
-    "bin/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "cdk.out",
-    "lambda",
-    "**/*.test.ts"
-  ]
+  "include": ["lib/**/*", "bin/**/*"],
+  "exclude": ["node_modules", "dist", "cdk.out", "lambda", "**/*.test.ts"]
 }

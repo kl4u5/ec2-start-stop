@@ -1,4 +1,10 @@
-import { EC2Client, DescribeInstancesCommand, StartInstancesCommand, StopInstancesCommand, Instance } from '@aws-sdk/client-ec2';
+import {
+  EC2Client,
+  DescribeInstancesCommand,
+  StartInstancesCommand,
+  StopInstancesCommand,
+  Instance,
+} from '@aws-sdk/client-ec2';
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { DateTime } from 'luxon';
 
@@ -7,16 +13,16 @@ import type { Schedule, SchedulesConfiguration } from './types';
 import { validateScheduleConfig } from './types';
 
 // Import constants
-import { 
-  ENV_VARS, 
-  DEFAULTS, 
-  TAG_NAMES, 
-  TIME_FORMATS, 
-  SCHEDULE_VALUES, 
-  SEPARATORS, 
-  INSTANCE_STATES, 
-  ACTIONS, 
-  WEEKDAY_KEYS 
+import {
+  ENV_VARS,
+  DEFAULTS,
+  TAG_NAMES,
+  TIME_FORMATS,
+  SCHEDULE_VALUES,
+  SEPARATORS,
+  INSTANCE_STATES,
+  ACTIONS,
+  WEEKDAY_KEYS,
 } from './constants';
 
 // Default clients
@@ -35,9 +41,9 @@ export const handler = async (event: unknown, context?: unknown, clients: Client
   // Use injected clients or defaults
   const ec2Client = clients.ec2Client || defaultEc2Client;
   const ssmClient = clients.ssmClient || defaultSsmClient;
-  
+
   console.log('Starting EC2 start/stop scheduler...');
-  
+
   try {
     // Get schedules configuration from Parameter Store
     const schedulesConfig = await getSchedulesConfig(ssmClient);
@@ -70,13 +76,13 @@ async function getSchedulesConfig(ssmClient: SSMClient): Promise<SchedulesConfig
   });
 
   const response = await ssmClient.send(command);
-  
+
   if (!response.Parameter?.Value) {
     throw new Error('Schedules configuration not found in Parameter Store');
   }
 
   const config = JSON.parse(response.Parameter.Value);
-  
+
   // Validate the configuration
   if (!validateScheduleConfig(config)) {
     throw new Error('Invalid schedules configuration format in Parameter Store');
@@ -109,7 +115,11 @@ async function getTaggedInstances(ec2Client: EC2Client): Promise<Instance[]> {
   return instances;
 }
 
-async function processInstance(instance: Instance, schedulesConfig: SchedulesConfiguration, ec2Client: EC2Client): Promise<void> {
+async function processInstance(
+  instance: Instance,
+  schedulesConfig: SchedulesConfiguration,
+  ec2Client: EC2Client
+): Promise<void> {
   if (!instance.InstanceId || !instance.Tags) {
     console.log('Instance missing ID or tags, skipping');
     return;
@@ -141,17 +151,17 @@ async function processInstance(instance: Instance, schedulesConfig: SchedulesCon
   // Get current time in UTC (server should be running in UTC)
   // Using Luxon for reliable timezone conversion and DST handling
   const nowUtc = DateTime.utc();
-  
+
   // Convert to the schedule's timezone
   const timeInTimezone = nowUtc.setZone(schedule.timezone);
-  
+
   if (!timeInTimezone.isValid) {
     console.error(`Instance ${instance.InstanceId} has invalid timezone '${schedule.timezone}', skipping`);
     return;
   }
-  
+
   console.log(`Current time in ${schedule.timezone}: ${timeInTimezone.toFormat(TIME_FORMATS.LOG_TIMESTAMP)}`);
-  
+
   // Get current weekday (1 = Monday, 7 = Sunday in Luxon)
   const weekday = timeInTimezone.weekday;
   const weekdayKey = WEEKDAY_KEYS[weekday - 1] as keyof Schedule;
@@ -169,21 +179,27 @@ async function processInstance(instance: Instance, schedulesConfig: SchedulesCon
 
   // Parse the day schedule (format: "start;stop" or "never;stop" or "start;never")
   const scheduleInfo = parseDaySchedule(daySchedule);
-  
+
   // Check if any action should be triggered now
   const currentTime = timeInTimezone.toFormat(TIME_FORMATS.SCHEDULE_TIME);
-  
+
   const shouldStart = shouldTriggerStartAction(currentTime, scheduleInfo.startTime, scheduleInfo.stopTime);
   const shouldStop = shouldTriggerStopAction(currentTime, scheduleInfo.startTime, scheduleInfo.stopTime);
-  
+
   if (shouldStart) {
-    console.log(`Should start instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`);
+    console.log(
+      `Should start instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`
+    );
     await executeAction(instance, ACTIONS.START, ec2Client);
   } else if (shouldStop) {
-    console.log(`Should stop instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`);
+    console.log(
+      `Should stop instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`
+    );
     await executeAction(instance, ACTIONS.STOP, ec2Client);
   } else {
-    console.log(`No action needed for instance ${instance.InstanceId}: current time ${currentTime}, schedule ${daySchedule}`);
+    console.log(
+      `No action needed for instance ${instance.InstanceId}: current time ${currentTime}, schedule ${daySchedule}`
+    );
   }
 }
 
@@ -194,21 +210,21 @@ interface ScheduleInfo {
 
 function parseDaySchedule(schedule: string): ScheduleInfo {
   // Handle different separators (, or ;)
-  const parts = schedule.includes(SEPARATORS.SCHEDULE_PARTS) 
-    ? schedule.split(SEPARATORS.SCHEDULE_PARTS) 
+  const parts = schedule.includes(SEPARATORS.SCHEDULE_PARTS)
+    ? schedule.split(SEPARATORS.SCHEDULE_PARTS)
     : schedule.split(SEPARATORS.SCHEDULE_PARTS_ALT);
-  
+
   if (parts.length === 2) {
     const [startTime, stopTime] = parts.map(p => p.trim());
     return {
       startTime: startTime,
-      stopTime: stopTime
+      stopTime: stopTime,
     };
   }
 
   return {
     startTime: SCHEDULE_VALUES.NEVER,
-    stopTime: SCHEDULE_VALUES.NEVER
+    stopTime: SCHEDULE_VALUES.NEVER,
   };
 }
 
@@ -261,26 +277,32 @@ async function executeAction(instance: Instance, action: 'start' | 'stop', ec2Cl
   const instanceState = instance.State?.Name;
   console.log(`Instance ${instance.InstanceId} current state: ${instanceState}, requested action: ${action}`);
 
-  if (action === ACTIONS.START && (instanceState === INSTANCE_STATES.STOPPED || instanceState === INSTANCE_STATES.STOPPING)) {
+  if (
+    action === ACTIONS.START &&
+    (instanceState === INSTANCE_STATES.STOPPED || instanceState === INSTANCE_STATES.STOPPING)
+  ) {
     console.log(`Starting instance ${instance.InstanceId}`);
-    
+
     const command = new StartInstancesCommand({
       InstanceIds: [instance.InstanceId],
     });
-    
+
     try {
       await ec2Client.send(command);
       console.log(`Successfully started instance ${instance.InstanceId}`);
     } catch (error) {
       console.error(`Failed to start instance ${instance.InstanceId}:`, error);
     }
-  } else if (action === ACTIONS.STOP && (instanceState === INSTANCE_STATES.RUNNING || instanceState === INSTANCE_STATES.PENDING)) {
+  } else if (
+    action === ACTIONS.STOP &&
+    (instanceState === INSTANCE_STATES.RUNNING || instanceState === INSTANCE_STATES.PENDING)
+  ) {
     console.log(`Stopping instance ${instance.InstanceId}`);
-    
+
     const command = new StopInstancesCommand({
       InstanceIds: [instance.InstanceId],
     });
-    
+
     try {
       await ec2Client.send(command);
       console.log(`Successfully stopped instance ${instance.InstanceId}`);
@@ -288,6 +310,8 @@ async function executeAction(instance: Instance, action: 'start' | 'stop', ec2Cl
       console.error(`Failed to stop instance ${instance.InstanceId}:`, error);
     }
   } else {
-    console.log(`Instance ${instance.InstanceId} already in correct state for action ${action} (current: ${instanceState})`);
+    console.log(
+      `Instance ${instance.InstanceId} already in correct state for action ${action} (current: ${instanceState})`
+    );
   }
 }

@@ -36,7 +36,7 @@ Examples:
     {
       name: 'sps-tid-server',
       enabled: true,
-      timezone: 'Europe/Berlin',      
+      timezone: 'Europe/Berlin',
       default: '06:00;22:00',
       sa: '08:00;18:00',
       su: '08:00;22:00',
@@ -52,7 +52,7 @@ Examples:
       fr: '07:00;22:00',
       sa: 'never;never',
       su: 'never;never',
-      default: '07:00;22:00'
+      default: '07:00;22:00',
     },
     {
       name: 'production-servers',
@@ -65,7 +65,7 @@ Examples:
       fr: '06:00;23:00',
       sa: '08:00;20:00',
       su: '10:00;18:00',
-      default: '06:00;23:00'
+      default: '06:00;23:00',
     },
     {
       name: 'test-environment',
@@ -78,11 +78,8 @@ Examples:
       fr: '09:00;17:00',
       sa: 'never;never',
       su: 'never;never',
-      default: '09:00;17:00'
-    }
+      default: '09:00;17:00',
+    },
   ],
-  maintainers: [
-    'not-yet@todo.com',
-    'todo@for-authed-ui.user'
-  ]
+  maintainers: ['not-yet@todo.com', 'todo@for-authed-ui.user'],
 };
