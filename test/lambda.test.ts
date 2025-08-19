@@ -1,20 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handler } from '../lambda/index';
-
-// Mock AWS SDK
-vi.mock('@aws-sdk/client-ec2');
-vi.mock('@aws-sdk/client-ssm');
+import { handler } from '../lambda/src/index';
+import type { EC2Client } from '@aws-sdk/client-ec2';
+import type { SSMClient } from '@aws-sdk/client-ssm';
 
 describe('EC2 Start/Stop Lambda Handler', () => {
+  let mockEC2Client: Partial<EC2Client>;
+  let mockSSMClient: Partial<SSMClient>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    
     // Set up environment variables
     process.env.SCHEDULES_PARAMETER_NAME = '/test/schedules';
+    process.env.AWS_REGION = 'us-east-1';
+    
+    // Create mock clients with send methods
+    mockSSMClient = {
+      send: vi.fn()
+    };
+    
+    mockEC2Client = {
+      send: vi.fn()
+    };
   });
 
   it('should handle empty event', async () => {
-    // Mock SSM response
-    const mockSSMSend = vi.fn().mockResolvedValue({
+    // Mock SSM response with proper format
+    (mockSSMClient.send as any).mockResolvedValue({
       Parameter: {
         Value: JSON.stringify({
           schedules: [],
@@ -23,21 +35,18 @@ describe('EC2 Start/Stop Lambda Handler', () => {
       }
     });
 
-    // Mock EC2 response
-    const mockEC2Send = vi.fn().mockResolvedValue({
+    // Mock EC2 response with no instances
+    (mockEC2Client.send as any).mockResolvedValue({
       Reservations: []
     });
 
-    const { SSMClient } = await import('@aws-sdk/client-ssm');
-    const { EC2Client } = await import('@aws-sdk/client-ec2');
-
-    vi.mocked(SSMClient).prototype.send = mockSSMSend;
-    vi.mocked(EC2Client).prototype.send = mockEC2Send;
-
-    await expect(handler({})).resolves.toBeUndefined();
+    await expect(handler({}, undefined, {
+      ec2Client: mockEC2Client as EC2Client,
+      ssmClient: mockSSMClient as SSMClient
+    })).resolves.toBeUndefined();
     
-    expect(mockSSMSend).toHaveBeenCalledTimes(1);
-    expect(mockEC2Send).toHaveBeenCalledTimes(1);
+    expect(mockSSMClient.send).toHaveBeenCalledTimes(1);
+    expect(mockEC2Client.send).toHaveBeenCalledTimes(1);
   });
 
   it('should process instances with matching schedules', async () => {
@@ -70,20 +79,21 @@ describe('EC2 Start/Stop Lambda Handler', () => {
       ]
     };
 
-    const mockSSMSend = vi.fn().mockResolvedValue({
+    (mockSSMClient.send as any).mockResolvedValue({
       Parameter: { Value: JSON.stringify(mockSchedule) }
     });
 
-    const mockEC2Send = vi.fn()
+    (mockEC2Client.send as any)
       .mockResolvedValueOnce(mockInstances) // DescribeInstances
-      .mockResolvedValueOnce({}); // StartInstances
+      .mockResolvedValueOnce({}); // StartInstances or StopInstances
 
-    const { SSMClient } = await import('@aws-sdk/client-ssm');
-    const { EC2Client } = await import('@aws-sdk/client-ec2');
-
-    vi.mocked(SSMClient).prototype.send = mockSSMSend;
-    vi.mocked(EC2Client).prototype.send = mockEC2Send;
-
-    await expect(handler({})).resolves.toBeUndefined();
+    await expect(handler({}, undefined, {
+      ec2Client: mockEC2Client as EC2Client,
+      ssmClient: mockSSMClient as SSMClient
+    })).resolves.toBeUndefined();
+    
+    // Should call SSM once and EC2 at least once (describe)
+    expect(mockSSMClient.send).toHaveBeenCalledTimes(1);
+    expect(mockEC2Client.send).toHaveBeenCalledWith(expect.any(Object));
   });
 });

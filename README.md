@@ -141,6 +141,22 @@ pnpm run test:watch
 pnpm run test:coverage
 ```
 
+### Build Management
+
+```bash
+# Clean all generated files
+pnpm run clean
+
+# Build everything
+pnpm run build:all
+
+# Build only Lambda function
+pnpm run build:lambda
+
+# Build only CDK project
+pnpm run build
+```
+
 ### Linting
 
 ```bash
@@ -164,14 +180,25 @@ pnpm run watch
 ├── bin/
 │   └── ec2-start-stop.ts          # CDK app entry point
 ├── lib/
-│   └── ec2-start-stop-stack.ts    # CDK stack definition
+│   ├── ec2-start-stop-stack.ts    # CDK stack definition
+│   └── schedules-config.ts        # Schedule interfaces and defaults
 ├── lambda/
-│   ├── index.ts                   # Lambda function code
+│   ├── src/
+│   │   ├── index.ts               # Lambda function code
+│   │   └── types.ts               # Lambda-specific types
+│   ├── dist/                      # Compiled Lambda code (generated)
 │   ├── package.json               # Lambda dependencies
 │   └── tsconfig.json              # Lambda TypeScript config
 ├── test/
 │   ├── lambda.test.ts             # Lambda function tests
 │   └── stack.test.ts              # Stack tests
+├── scripts/
+│   ├── deploy.sh                  # Deployment script
+│   ├── update-schedules.sh        # Schedule update script
+│   ├── test-function.sh           # Function testing script
+│   ├── validate-schedules.sh      # Schedule validation script
+│   └── clean-generated.sh         # Clean generated files
+├── dist/                          # Compiled CDK code (generated)
 ├── package.json                   # Project dependencies
 ├── tsconfig.json                  # TypeScript configuration
 ├── vitest.config.ts               # Test configuration

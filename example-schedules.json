@@ -1,44 +1,47 @@
 {
     "schedules": [
         {
-            "name": "my-dev-servers",
+            "name": "dev-servers",
             "enabled": true,
             "timezone": "Europe/Berlin",
             "mo": "07:00;22:00",
-            "tu": "09:00;15:00",
-            "we": "07:00;09:30",
-            "th": "never;10:00",
-            "fr": "07:00;never",
-            "sa": "12:30;16:00",
-            "su": "never;06:00",
+            "tu": "07:00;22:00",
+            "we": "07:00;22:00",
+            "th": "07:00;22:00",
+            "fr": "07:00;22:00",
+            "sa": "never;never",
+            "su": "never;never",
             "default": "07:00;22:00"
         },
         {
             "name": "production-servers",
             "enabled": true,
-            "timezone": "America/New_York",
+            "timezone": "UTC",
             "mo": "06:00;23:00",
             "tu": "06:00;23:00",
             "we": "06:00;23:00",
             "th": "06:00;23:00",
             "fr": "06:00;23:00",
             "sa": "08:00;20:00",
-            "su": "never;never",
+            "su": "10:00;18:00",
             "default": "06:00;23:00"
         },
         {
-            "name": "weekend-only",
-            "enabled": true,
-            "timezone": "UTC",
-            "mo": "never;never",
-            "tu": "never;never",
-            "we": "never;never",
-            "th": "never;never",
-            "fr": "never;never",
-            "sa": "10:00;18:00",
-            "su": "10:00;18:00",
-            "default": "never;never"
+            "name": "test-environment",
+            "enabled": false,
+            "timezone": "America/New_York",
+            "mo": "09:00;17:00",
+            "tu": "09:00;17:00",
+            "we": "09:00;17:00",
+            "th": "09:00;17:00",
+            "fr": "09:00;17:00",
+            "sa": "never;never",
+            "su": "never;never",
+            "default": "09:00;17:00"
         }
     ],
-    "maintainers": ["john.doe@example.com","jane.smith@example.com"]
+    "maintainers": [
+        "admin@example.com",
+        "devops@example.com"
+    ]
 }

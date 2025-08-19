@@ -19,17 +19,21 @@
     "strictPropertyInitialization": false,
     "typeRoots": ["./node_modules/@types"],
     "outDir": "dist",
-    "rootDir": ".",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
+  "include": [
+    "lib/**/*",
+    "bin/**/*"
+  ],
   "exclude": [
     "node_modules",
     "dist",
     "cdk.out",
+    "lambda",
     "**/*.test.ts"
   ]
 }

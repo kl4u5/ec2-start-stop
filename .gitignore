@@ -14,3 +14,12 @@ coverage/
 .nyc_output/
 .DS_Store
 Thumbs.db
+
+# TypeScript compilation outputs
+*.js
+*.d.ts
+*.js.map
+
+# But keep specific JS config files
+!*.config.js
+!.eslintrc.js

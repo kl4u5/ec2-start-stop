@@ -1,46 +1,37 @@
 import { EC2Client, DescribeInstancesCommand, StartInstancesCommand, StopInstancesCommand, Instance } from '@aws-sdk/client-ec2';
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 
-interface Schedule {
-  name: string;
-  enabled: boolean;
-  timezone: string;
-  mo?: string;
-  tu?: string;
-  we?: string;
-  th?: string;
-  fr?: string;
-  sa?: string;
-  su?: string;
-  default?: string;
-}
+// Import types from our local types module
+import type { Schedule, SchedulesConfiguration, TimeAction } from './types';
+import { validateScheduleConfig } from './types';
 
-interface SchedulesConfig {
-  schedules: Schedule[];
-  maintainers: string[];
-}
-
-interface TimeAction {
-  time: string;
-  action: 'start' | 'stop';
-}
-
-const ec2Client = new EC2Client({});
-const ssmClient = new SSMClient({});
+// Default clients
+const defaultEc2Client = new EC2Client({});
+const defaultSsmClient = new SSMClient({});
 
 const SCHEDULES_PARAMETER_NAME = process.env.SCHEDULES_PARAMETER_NAME || '/ec2-start-stop/schedules';
 const TOLERANCE_MINUTES = 2;
 
-export const handler = async (event: any): Promise<void> => {
+// Interface for dependency injection
+interface Clients {
+  ec2Client?: EC2Client;
+  ssmClient?: SSMClient;
+}
+
+export const handler = async (event: any, context?: any, clients: Clients = {}): Promise<void> => {
+  // Use injected clients or defaults
+  const ec2Client = clients.ec2Client || defaultEc2Client;
+  const ssmClient = clients.ssmClient || defaultSsmClient;
+  
   console.log('Starting EC2 start/stop scheduler...');
   
   try {
     // Get schedules configuration from Parameter Store
-    const schedulesConfig = await getSchedulesConfig();
+    const schedulesConfig = await getSchedulesConfig(ssmClient);
     console.log(`Found ${schedulesConfig.schedules.length} schedule(s)`);
 
     // Get all EC2 instances with the start-stop-schedule tag
-    const instances = await getTaggedInstances();
+    const instances = await getTaggedInstances(ec2Client);
     console.log(`Found ${instances.length} tagged instance(s)`);
 
     if (instances.length === 0) {
@@ -50,7 +41,7 @@ export const handler = async (event: any): Promise<void> => {
 
     // Process each instance
     for (const instance of instances) {
-      await processInstance(instance, schedulesConfig);
+      await processInstance(instance, schedulesConfig, ec2Client);
     }
 
     console.log('EC2 start/stop scheduler completed successfully');
@@ -60,7 +51,7 @@ export const handler = async (event: any): Promise<void> => {
   }
 };
 
-async function getSchedulesConfig(): Promise<SchedulesConfig> {
+async function getSchedulesConfig(ssmClient: SSMClient): Promise<SchedulesConfiguration> {
   const command = new GetParameterCommand({
     Name: SCHEDULES_PARAMETER_NAME,
   });
@@ -71,10 +62,17 @@ async function getSchedulesConfig(): Promise<SchedulesConfig> {
     throw new Error('Schedules configuration not found in Parameter Store');
   }
 
-  return JSON.parse(response.Parameter.Value);
+  const config = JSON.parse(response.Parameter.Value);
+  
+  // Validate the configuration
+  if (!validateScheduleConfig(config)) {
+    throw new Error('Invalid schedules configuration format in Parameter Store');
+  }
+
+  return config;
 }
 
-async function getTaggedInstances(): Promise<Instance[]> {
+async function getTaggedInstances(ec2Client: EC2Client): Promise<Instance[]> {
   const command = new DescribeInstancesCommand({
     Filters: [
       {
@@ -98,7 +96,7 @@ async function getTaggedInstances(): Promise<Instance[]> {
   return instances;
 }
 
-async function processInstance(instance: Instance, schedulesConfig: SchedulesConfig): Promise<void> {
+async function processInstance(instance: Instance, schedulesConfig: SchedulesConfiguration, ec2Client: EC2Client): Promise<void> {
   if (!instance.InstanceId || !instance.Tags) {
     console.log('Instance missing ID or tags, skipping');
     return;
@@ -113,7 +111,7 @@ async function processInstance(instance: Instance, schedulesConfig: SchedulesCon
 
   // Find matching schedule (case insensitive, trimmed)
   const scheduleName = scheduleTag.Value.trim().toLowerCase();
-  const schedule = schedulesConfig.schedules.find(s => s.name.toLowerCase() === scheduleName);
+  const schedule = schedulesConfig.schedules.find((s: Schedule) => s.name.toLowerCase() === scheduleName);
 
   if (!schedule) {
     console.log(`Instance ${instance.InstanceId} references unknown schedule '${scheduleTag.Value}', skipping`);
@@ -155,7 +153,7 @@ async function processInstance(instance: Instance, schedulesConfig: SchedulesCon
   
   for (const timeAction of timeActions) {
     if (shouldTriggerAction(currentTime, timeAction.time)) {
-      await executeAction(instance, timeAction.action);
+      await executeAction(instance, timeAction.action, ec2Client);
     }
   }
 }
@@ -193,7 +191,7 @@ function shouldTriggerAction(currentTime: string, scheduledTime: string): boolea
   return diff <= TOLERANCE_MINUTES;
 }
 
-async function executeAction(instance: Instance, action: 'start' | 'stop'): Promise<void> {
+async function executeAction(instance: Instance, action: 'start' | 'stop', ec2Client: EC2Client): Promise<void> {
   if (!instance.InstanceId) {
     return;
   }

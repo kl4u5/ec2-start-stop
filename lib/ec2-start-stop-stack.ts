@@ -7,6 +7,7 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import { DEFAULT_SCHEDULES_CONFIG } from './schedules-config';
 
 export class Ec2StartStopStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -16,24 +17,7 @@ export class Ec2StartStopStack extends cdk.Stack {
     const schedulesParameter = new ssm.StringParameter(this, 'Ec2SchedulesParameter', {
       parameterName: '/ec2-start-stop/schedules',
       description: 'EC2 start/stop schedules configuration',
-      stringValue: JSON.stringify({
-        schedules: [
-          {
-            name: 'my-dev-servers',
-            enabled: true,
-            timezone: 'Europe/Berlin',
-            mo: '07:00;22:00',
-            tu: '09:00;15:00',
-            we: '07:00;09:30',
-            th: 'never;10:00',
-            fr: '07:00;never',
-            sa: '12:30;16:00',
-            su: 'never;06:00',
-            default: '07:00;22:00'
-          }
-        ],
-        maintainers: ['john.doe@example.com', 'jane.smith@example.com']
-      }, null, 2),
+      stringValue: JSON.stringify(DEFAULT_SCHEDULES_CONFIG, null, 2),
       tier: ssm.ParameterTier.STANDARD,
     });
 
@@ -71,7 +55,7 @@ export class Ec2StartStopStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       role: lambdaRole,
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/dist')),
       timeout: cdk.Duration.minutes(5),
       environment: {
         SCHEDULES_PARAMETER_NAME: schedulesParameter.parameterName,
