@@ -410,7 +410,8 @@ The scheduler pays for itself within hours of deployment!
 
 4. **Review Lambda logs:**
    ```bash
-   aws logs tail /aws/lambda/YOUR_FUNCTION_NAME --since 1h
+   FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name Ec2StartStopStack --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionName'].OutputValue" --output text)
+   aws logs tail /aws/lambda/$FUNCTION_NAME --since 1h
    ```
 
 ### Common Issues
