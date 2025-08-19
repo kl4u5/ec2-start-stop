@@ -230,11 +230,8 @@ aws ssm put-parameter --name "/ec2-start-stop/schedules" --value file://schedule
 
 #### Check Lambda Execution
 ```bash
-# Get function name
-FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name Ec2StartStopStack --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionName'].OutputValue" --output text)
-
 # View recent logs
-aws logs tail /aws/lambda/$FUNCTION_NAME --follow
+aws logs tail /aws/lambda/ec2-start-stop-function --follow
 ```
 
 #### Verify EC2 Instance Tags
@@ -410,8 +407,7 @@ The scheduler pays for itself within hours of deployment!
 
 4. **Review Lambda logs:**
    ```bash
-   FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name Ec2StartStopStack --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionName'].OutputValue" --output text)
-   aws logs tail /aws/lambda/$FUNCTION_NAME --since 1h
+   aws logs tail /aws/lambda/ec2-start-stop-function --since 1h
    ```
 
 ### Common Issues
@@ -428,8 +424,7 @@ The scheduler pays for itself within hours of deployment!
 
 ```bash
 # Test Lambda function manually
-FUNCTION_NAME=$(aws cloudformation describe-stacks --stack-name Ec2StartStopStack --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionName'].OutputValue" --output text)
-aws lambda invoke --function-name $FUNCTION_NAME --payload '{}' output.json
+aws lambda invoke --function-name ec2-start-stop-function --payload '{}' output.json
 
 # View Parameter Store configuration  
 aws ssm get-parameter --name "/ec2-start-stop/schedules" | jq .Parameter.Value

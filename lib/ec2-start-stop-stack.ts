@@ -53,6 +53,7 @@ export class Ec2StartStopStack extends cdk.Stack {
 
     // Lambda function for EC2 start/stop logic
     const ec2StartStopFunction = new lambda.Function(this, 'Ec2StartStopFunction', {
+      functionName: 'ec2-start-stop-function',
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       role: lambdaRole,
