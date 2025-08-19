@@ -4,6 +4,7 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -76,6 +77,7 @@ export class Ec2StartStopStack extends cdk.Stack {
         SCHEDULES_PARAMETER_NAME: schedulesParameter.parameterName,
       },
       description: 'Automatically starts and stops EC2 instances based on schedules',
+      logRetention: logs.RetentionDays.TWO_MONTHS,
     });
 
     // EventBridge rule to trigger the Lambda every 15 minutes
