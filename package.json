@@ -1,6 +1,7 @@
 {
   "name": "ec2-start-stop-cdk",
   "version": "1.0.0",
+  "type": "module",
   "description": "AWS CDK project for automated EC2 instance start/stop scheduling",
   "main": "dist/index.js",
   "scripts": {
@@ -20,8 +21,8 @@
     "synth": "pnpm run build:all && cdk synth",
     "bootstrap": "cdk bootstrap",
     "destroy": "cdk destroy",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [
     "aws",
@@ -33,20 +34,20 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "aws-cdk": "^2.149.0",
-    "eslint": "^8.57.0",
-    "typescript": "^5.5.0",
-    "vitest": "^2.0.0",
-    "@vitest/coverage-v8": "^2.0.0"
+    "@types/node": "^24.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
+    "aws-cdk": "^2.1025.0",
+    "eslint": "^9.33.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "@vitest/coverage-v8": "^3.2.4"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.149.0",
-    "constructs": "^10.3.0",
-    "@aws-sdk/client-ec2": "^3.620.0",
-    "@aws-sdk/client-ssm": "^3.620.0",
+    "aws-cdk-lib": "^2.211.0",
+    "constructs": "^10.4.2",
+    "@aws-sdk/client-ec2": "^3.868.0",
+    "@aws-sdk/client-ssm": "^3.864.0",
     "source-map-support": "^0.5.21"
   },
   "packageManager": "pnpm@9.6.0",

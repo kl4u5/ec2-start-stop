@@ -3,7 +3,7 @@ import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { DateTime } from 'luxon';
 
 // Import types from our local types module
-import type { Schedule, SchedulesConfiguration, TimeAction } from './types';
+import type { Schedule, SchedulesConfiguration } from './types';
 import { validateScheduleConfig } from './types';
 
 // Import constants
