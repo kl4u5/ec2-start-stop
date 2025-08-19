@@ -26,7 +26,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm run format:check && pnpm run lint && pnpm test",
-    "fix": "pnpm run format && pnpm run lint:fix"
+    "fix": "pnpm run format && pnpm run lint:fix",
+    "precommit": "bash scripts/precommit.sh || (echo '❌ Pre-commit checks failed. Fix the issues above and try again.' && exit 1)",
+    "prepare": "husky"
   },
   "keywords": [
     "aws",
@@ -44,6 +46,7 @@
     "@vitest/coverage-v8": "^3.2.4",
     "aws-cdk": "^2.1025.0",
     "eslint": "^9.33.0",
+    "husky": "^9.1.7",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
