@@ -21,9 +21,14 @@ describe('Ec2StartStopStack', () => {
       ScheduleExpression: 'cron(0,15,30,45 * * * ? *)',
     });
 
-    // Verify Parameter Store parameter is created
+    // Verify Parameter Store parameters are created
     template.hasResourceProperties('AWS::SSM::Parameter', {
       Name: '/ec2-start-stop/schedules',
+      Type: 'String',
+    });
+
+    template.hasResourceProperties('AWS::SSM::Parameter', {
+      Name: '/ec2-start-stop/documentation',
       Type: 'String',
     });
 

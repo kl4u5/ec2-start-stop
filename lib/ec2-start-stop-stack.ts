@@ -9,11 +9,19 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import * as path from 'path';
 import { DEFAULTS, ENV_VARS } from '../lambda/src/constants';
-import { DEFAULT_SCHEDULES_CONFIG } from '../lambda/src/default-config';
+import { DEFAULT_DOCUMENTATION, DEFAULT_SCHEDULES_CONFIG } from '../lambda/src/default-config';
 
 export class Ec2StartStopStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // Parameter Store parameter for detailed documentation
+    const documentationParameter = new ssm.StringParameter(this, 'Ec2DocumentationParameter', {
+      parameterName: DEFAULTS.DOCUMENTATION_PARAMETER_NAME,
+      description: 'EC2 start/stop detailed documentation for schedules configuration',
+      stringValue: DEFAULT_DOCUMENTATION,
+      tier: ssm.ParameterTier.STANDARD,
+    });
 
     // Parameter Store parameter for schedules configuration
     const schedulesParameter = new ssm.StringParameter(this, 'Ec2SchedulesParameter', {
@@ -43,7 +51,7 @@ export class Ec2StartStopStack extends cdk.Stack {
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: ['ssm:GetParameter'],
-              resources: [schedulesParameter.parameterArn],
+              resources: [schedulesParameter.parameterArn, documentationParameter.parameterArn],
             }),
           ],
         }),
@@ -60,6 +68,7 @@ export class Ec2StartStopStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(5),
       environment: {
         [ENV_VARS.SCHEDULES_PARAMETER_NAME]: schedulesParameter.parameterName,
+        [ENV_VARS.DOCUMENTATION_PARAMETER_NAME]: documentationParameter.parameterName,
       },
       description: 'Automatically starts and stops EC2 instances based on schedules',
       logRetention: logs.RetentionDays.TWO_MONTHS,
@@ -87,10 +96,15 @@ export class Ec2StartStopStack extends cdk.Stack {
     // Add the Lambda function as a target for the EventBridge rule
     scheduleRule.addTarget(new targets.LambdaFunction(ec2StartStopFunction));
 
-    // Output the parameter name for reference
+    // Output the parameter names for reference
     new cdk.CfnOutput(this, 'SchedulesParameterName', {
       value: schedulesParameter.parameterName,
       description: 'Parameter Store parameter name for schedules configuration',
+    });
+
+    new cdk.CfnOutput(this, 'DocumentationParameterName', {
+      value: documentationParameter.parameterName,
+      description: 'Parameter Store parameter name for detailed documentation',
     });
 
     // Output the Lambda function name

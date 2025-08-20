@@ -5,11 +5,13 @@
 // Environment variable names
 export const ENV_VARS = {
   SCHEDULES_PARAMETER_NAME: 'SCHEDULES_PARAMETER_NAME',
+  DOCUMENTATION_PARAMETER_NAME: 'DOCUMENTATION_PARAMETER_NAME',
 } as const;
 
 // Default values
 export const DEFAULTS = {
   SCHEDULES_PARAMETER_NAME: '/ec2-start-stop/schedules',
+  DOCUMENTATION_PARAMETER_NAME: '/ec2-start-stop/documentation',
 } as const;
 
 // AWS tag names
