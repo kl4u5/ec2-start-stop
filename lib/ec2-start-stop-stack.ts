@@ -72,10 +72,16 @@ export class Ec2StartStopStack extends cdk.Stack {
       },
     });
 
-    // EventBridge rule to trigger the Lambda every 15 minutes
+    // EventBridge rule to trigger the Lambda at 00, 15, 30, and 45 minutes past each hour
     const scheduleRule = new events.Rule(this, 'Ec2StartStopScheduleRule', {
-      schedule: events.Schedule.rate(cdk.Duration.minutes(15)),
-      description: 'Triggers EC2 start/stop function every 15 minutes',
+      schedule: events.Schedule.cron({
+        minute: '0,15,30,45',
+        hour: '*',
+        day: '*',
+        month: '*',
+        year: '*',
+      }),
+      description: 'Triggers EC2 start/stop function at 00, 15, 30, and 45 minutes past each hour',
     });
 
     // Add the Lambda function as a target for the EventBridge rule

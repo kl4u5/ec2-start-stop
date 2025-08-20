@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
 import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { describe, expect, it } from 'vitest';
 import { Ec2StartStopStack } from '../lib/ec2-start-stop-stack';
 
 describe('Ec2StartStopStack', () => {
@@ -18,7 +18,7 @@ describe('Ec2StartStopStack', () => {
 
     // Verify EventBridge rule is created
     template.hasResourceProperties('AWS::Events::Rule', {
-      ScheduleExpression: 'rate(15 minutes)',
+      ScheduleExpression: 'cron(0,15,30,45 * * * ? *)',
     });
 
     // Verify Parameter Store parameter is created
