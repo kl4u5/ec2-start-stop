@@ -8,8 +8,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@aws-sdk/client-ec2": "^3.620.0",
-    "@aws-sdk/client-ssm": "^3.620.0",
     "luxon": "^3.7.1"
   },
   "devDependencies": {

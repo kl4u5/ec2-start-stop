@@ -1,14 +1,15 @@
 import * as cdk from 'aws-cdk-lib';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import * as path from 'path';
-import { DEFAULT_SCHEDULES_CONFIG } from '../lambda/src/default-config';
 import { DEFAULTS, ENV_VARS } from '../lambda/src/constants';
+import { DEFAULT_SCHEDULES_CONFIG } from '../lambda/src/default-config';
 
 export class Ec2StartStopStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -50,18 +51,25 @@ export class Ec2StartStopStack extends cdk.Stack {
     });
 
     // Lambda function for EC2 start/stop logic
-    const ec2StartStopFunction = new lambda.Function(this, 'Ec2StartStopFunction', {
+    const ec2StartStopFunction = new nodejs.NodejsFunction(this, 'Ec2StartStopFunction', {
       functionName: 'ec2-start-stop-function',
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'index.handler',
+      handler: 'handler',
       role: lambdaRole,
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/dist')),
+      entry: path.join(__dirname, '../lambda/src/index.ts'),
       timeout: cdk.Duration.minutes(5),
       environment: {
         [ENV_VARS.SCHEDULES_PARAMETER_NAME]: schedulesParameter.parameterName,
       },
       description: 'Automatically starts and stops EC2 instances based on schedules',
       logRetention: logs.RetentionDays.TWO_MONTHS,
+      bundling: {
+        minify: true,
+        sourceMap: false,
+        target: 'es2022',
+        format: nodejs.OutputFormat.CJS,
+        externalModules: ['@aws-sdk/*'], // AWS SDK is provided by Lambda runtime
+      },
     });
 
     // EventBridge rule to trigger the Lambda every 15 minutes
