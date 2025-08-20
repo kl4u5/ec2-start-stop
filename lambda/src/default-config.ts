@@ -11,30 +11,27 @@ import type { SchedulesConfiguration } from './types';
  */
 export const DEFAULT_DOCUMENTATION = `EC2 Start/Stop Automation Configuration
 
-This configuration defines automated start/stop schedules for EC2 instances based on tags.
+The ${DEFAULTS.SCHEDULES_PARAMETER_NAME} parameter defines configuration for automated start/stop schedules for EC2 instances based on tags.
 
 How it works:
 • EC2 instances are tagged with 'start-stop-schedule' containing a schedule name
-• The Lambda function runs at 00, 15, 30, and 45 minutes past each hour to check schedules
+• A Lambda function runs at 00, 15, 30, and 45 minutes past each hour to check schedules
 • Each schedule supports timezone-aware start/stop times for each day of the week
 • Time format: 'HH:MM;HH:MM' (start;stop) or 'never;never' to skip a day
 • 'default' schedule applies to days not explicitly defined
+• Note: Since it runs every 15 minutes, time schedules should be defined accordingly. So a time of 07:17 will not trigger any action before 07:30 and so on.
 
 EC2 Instance Tagging:
-To enable automation for an EC2 instance, add the following tag:
+To enable automation for an EC2 instance, add the following tag to it:
 • Key: 'start-stop-schedule'
 • Value: The name of a schedule defined in the configuration (e.g., 'sps-tid-server', 'test-environment')
-
-Example EC2 tags:
-• Key: start-stop-schedule, Value: sps-tid-server
-• Key: start-stop-schedule, Value: test-environment
-• Key: start-stop-schedule, Value: example-servers
 
 Notes:
 • Tag values are case-insensitive and whitespace is trimmed
 • Only instances with this exact tag key will be processed
 • Invalid or missing schedule names will be skipped with a log message
 • Disabled schedules (enabled: false) will be ignored
+
 
 Schedule options:
 • name: Unique identifier referenced by EC2 instance tags
