@@ -43,16 +43,8 @@ import {
 // Default clients
 const defaultEc2Client = new EC2Client({});
 const defaultSsmClient = new SSMClient({});
-const defaultSesClient = new SESClient({
-  // SES region will be set via environment variable (CDK sets this to deployment region)
-  // If not set, AWS SDK will use the default region from the Lambda environment
-  ...(process.env[ENV_VARS.SES_REGION] && { region: process.env[ENV_VARS.SES_REGION] }),
-});
-const defaultSnsClient = new SNSClient({
-  // SNS region will be set via environment variable (CDK sets this to deployment region)
-  // If not set, AWS SDK will use the default region from the Lambda environment
-  ...(process.env[ENV_VARS.SNS_REGION] && { region: process.env[ENV_VARS.SNS_REGION] }),
-});
+const defaultSesClient = new SESClient({});
+const defaultSnsClient = new SNSClient({});
 
 const SCHEDULES_PARAMETER_NAME = process.env[ENV_VARS.SCHEDULES_PARAMETER_NAME] || DEFAULTS.SCHEDULES_PARAMETER_NAME;
 
