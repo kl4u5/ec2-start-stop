@@ -7,6 +7,8 @@ export const ENV_VARS = {
   SCHEDULES_PARAMETER_NAME: 'SCHEDULES_PARAMETER_NAME',
   DOCUMENTATION_PARAMETER_NAME: 'DOCUMENTATION_PARAMETER_NAME',
   LOG_LEVEL: 'LOG_LEVEL',
+  ADMIN_EMAIL: 'ADMIN_EMAIL',
+  SES_REGION: 'SES_REGION',
 } as const;
 
 // Default values
@@ -14,6 +16,7 @@ export const DEFAULTS = {
   SCHEDULES_PARAMETER_NAME: '/ec2-start-stop/schedules',
   DOCUMENTATION_PARAMETER_NAME: '/ec2-start-stop/documentation',
   LOG_LEVEL: 'INFO',
+  ADMIN_EMAIL: 'kl4u5.j3n53n@gmail.com',
 } as const;
 
 // Log levels
@@ -53,6 +56,14 @@ export const INSTANCE_STATES = {
   STOPPED: 'stopped',
   PENDING: 'pending',
   STOPPING: 'stopping',
+} as const;
+
+// Email notification types
+export const EMAIL_TYPES = {
+  INSTANCE_STARTED: 'INSTANCE_STARTED',
+  INSTANCE_STOPPED: 'INSTANCE_STOPPED',
+  START_FAILED: 'START_FAILED',
+  STOP_FAILED: 'STOP_FAILED',
 } as const;
 
 // Actions

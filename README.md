@@ -28,6 +28,8 @@ environments.
 - **⏰ EventBridge Integration**: Reliable 15-minute interval execution
 - **🎯 Range-Based Logic**: Intelligent scheduling that considers entire time
   ranges, not just exact moments
+- **📧 Email Notifications**: Automatic admin alerts for all state changes and
+  failures via Amazon SES
 
 ## Architecture
 
@@ -246,6 +248,52 @@ aws ssm put-parameter --name "/ec2-start-stop/schedules" --value file://schedule
 ```
 
 ### Monitoring and Troubleshooting
+
+#### Email Notifications
+
+The system automatically sends email notifications for all EC2 instance state
+changes and failures:
+
+- **Instance Started**: Notification when an instance is successfully started
+- **Instance Stopped**: Notification when an instance is successfully stopped
+- **Start Failed**: Alert when instance start operation fails
+- **Stop Failed**: Alert when instance stop operation fails
+
+**Configuration:**
+
+- Admin email is configured via the `ADMIN_EMAIL` environment variable
+- Requires proper SES permissions in the Lambda execution role
+
+**SES Setup Requirements:**
+
+1. **Verify the admin email address in Amazon SES**:
+
+   ```bash
+   aws ses verify-email-identity --email-address your-admin@email.com
+   ```
+
+   Check your email and click the verification link.
+
+2. **Ensure SES is available in your deployment region** SES is available in:
+   us-east-1, us-west-2, eu-west-1, eu-central-1, ap-southeast-2, and others.
+
+3. **SES Sandbox Mode is recommended for this project**:
+   - **Sandbox Mode**: Only verified emails can receive notifications -
+     **perfect for admin alerts**
+   - **Production Mode**: Can send to any email address (usually unnecessary for
+     infrastructure notifications)
+   - **Recommendation**: Stay in sandbox mode unless you need to send alerts to
+     multiple unverified recipients
+
+   **Why Sandbox Mode Works Great Here:**
+   - ✅ Only sends to verified admin emails (more secure)
+   - ✅ Lower risk of accidental spam or misconfiguration
+   - ✅ 200 emails/day limit is more than sufficient for EC2 notifications
+   - ✅ No approval process needed - works immediately after email verification
+
+   **Only request production access if you need to:**
+   - Send alerts to multiple team members with unverified emails
+   - Send more than 200 notifications per day (very unlikely for EC2 automation)
 
 #### Check Lambda Execution
 

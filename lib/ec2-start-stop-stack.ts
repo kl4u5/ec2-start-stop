@@ -53,6 +53,11 @@ export class Ec2StartStopStack extends cdk.Stack {
               actions: ['ssm:GetParameter'],
               resources: [schedulesParameter.parameterArn, documentationParameter.parameterArn],
             }),
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+              resources: ['*'],
+            }),
           ],
         }),
       },
@@ -70,6 +75,8 @@ export class Ec2StartStopStack extends cdk.Stack {
         [ENV_VARS.SCHEDULES_PARAMETER_NAME]: schedulesParameter.parameterName,
         [ENV_VARS.DOCUMENTATION_PARAMETER_NAME]: documentationParameter.parameterName,
         [ENV_VARS.LOG_LEVEL]: 'INFO', // Default to INFO level, can be overridden
+        [ENV_VARS.SES_REGION]: this.region,
+        [ENV_VARS.ADMIN_EMAIL]: 'kl4u5.j3n53n@gmail.com', // Default admin email
       },
       description: 'Automatically starts and stops EC2 instances based on schedules',
       logRetention: logs.RetentionDays.TWO_MONTHS,
