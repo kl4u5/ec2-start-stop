@@ -336,19 +336,91 @@ aws ssm put-parameter --name "/ec2-start-stop/schedules" --value file://schedule
 
 ### Deployment Options
 
+**⚠️ Important**: CDK will always update the schedules parameter during
+deployment. To protect custom configurations, use the backup/restore workflow
+below.
+
+#### Standard Deployment
+
 ```bash
-# Standard deployment
+# Deploy to development
+pnpm run deploy:dev
+
+# Deploy to production
+pnpm run deploy:prod
+
+# Deploy to default profile
 pnpm run deploy
+```
 
-# Deploy to specific profile/region
-pnpm run deploy -- --profile production
+#### Protected Deployment Workflow
 
-# Build and review changes first
+To protect existing Parameter Store configurations from being overwritten during
+deployment, use the automated backup/restore scripts:
+
+```bash
+# 1. BACKUP existing configuration before deployment
+pnpm run deploy:prod:backup    # Safely backs up existing configuration
+
+# 2. DEPLOY (this will overwrite the parameter with defaults)
+pnpm run deploy:prod
+
+# 3. RESTORE your custom configuration
+pnpm run deploy:prod:restore   # Restores your custom configuration
+
+# For development environment:
+pnpm run deploy:dev:backup
+pnpm run deploy:dev
+pnpm run deploy:dev:restore
+```
+
+**Script Features:**
+
+- ✅ **Smart error handling**: Gracefully handles non-existent parameters
+- ✅ **Empty parameter protection**: Warns about empty configurations
+- ✅ **JSON validation**: Ensures backup integrity before restore
+- ✅ **Cross-platform**: Works on Windows, macOS, and Linux
+- ✅ **Detailed feedback**: Clear console output with status indicators
+
+**What happens if no parameter exists?**
+
+- Backup script: Creates an empty backup file and notifies you
+- Restore script: Skips restoration and notifies you (no changes made)
+
+**What happens with empty parameters?**
+
+- Backup script: Creates backup but warns about empty configuration
+- Restore script: Validates content before restoration
+
+#### Manual Parameter Management
+
+```bash
+# View current configuration
+aws ssm get-parameter --name "/ec2-start-stop/schedules" --query "Parameter.Value" --output text | jq .
+
+# Backup manually
+aws ssm get-parameter --name "/ec2-start-stop/schedules" --query "Parameter.Value" --output text > my-backup.json
+
+# Restore manually
+aws ssm put-parameter --name "/ec2-start-stop/schedules" --value file://my-backup.json --overwrite
+```
+
+#### Build and Review Process
+
+```bash
+# Build and review changes before deployment
 pnpm run build:all
 pnpm run synth    # Generate CloudFormation template
 pnpm run diff     # Review changes
 pnpm run deploy   # Deploy if changes look good
 ```
+
+**💡 Recommended Workflow:**
+
+1. **Always backup** before deployment: `pnpm run deploy:prod:backup`
+2. **Deploy safely**: `pnpm run deploy:prod`
+3. **Restore customizations**: `pnpm run deploy:prod:restore`
+4. **Verify**: Check that your custom schedules are still active
 
 ### Managing Schedules
 

@@ -16,6 +16,7 @@ export class Ec2StartStopStack extends cdk.Stack {
     super(scope, id, props);
 
     // Parameter Store parameter for detailed documentation
+    // Documentation can always be updated as it's reference material
     const documentationParameter = new ssm.StringParameter(this, 'Ec2DocumentationParameter', {
       parameterName: DEFAULTS.DOCUMENTATION_PARAMETER_NAME,
       description: 'EC2 start/stop detailed documentation for schedules configuration',
@@ -24,14 +25,13 @@ export class Ec2StartStopStack extends cdk.Stack {
     });
 
     // Parameter Store parameter for schedules configuration
+    // Always create the parameter resource to avoid CloudFormation removal
     const schedulesParameter = new ssm.StringParameter(this, 'Ec2SchedulesParameter', {
       parameterName: DEFAULTS.SCHEDULES_PARAMETER_NAME,
       description: 'EC2 start/stop schedules configuration',
       stringValue: JSON.stringify(DEFAULT_SCHEDULES_CONFIG, null, 2),
       tier: ssm.ParameterTier.STANDARD,
-    });
-
-    // IAM role for the Lambda function
+    }); // IAM role for the Lambda function
     const lambdaRole = new iam.Role(this, 'Ec2StartStopLambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')],

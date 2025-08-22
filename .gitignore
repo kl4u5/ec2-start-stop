@@ -27,3 +27,6 @@ Thumbs.db
 # But keep specific JS config files
 !*.config.js
 !.eslintrc.js
+
+# Backup files from deployment scripts
+*backup-*.json
