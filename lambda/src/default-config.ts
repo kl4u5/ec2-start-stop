@@ -32,6 +32,15 @@ Notes:
 • Invalid or missing schedule names will be skipped with a log message
 • Disabled schedules (enabled: false) will be ignored
 
+Logging Configuration:
+The Lambda function supports configurable log levels via the LOG_LEVEL environment variable:
+• DEBUG: All debug information, processing details, and state checks
+• INFO: Important actions (start/stop commands), schedule detection, and summary information (default)
+• WARN: Warnings about configuration issues or unknown schedules
+• ERROR: Only critical errors and failures
+
+Set LOG_LEVEL to 'DEBUG' for detailed troubleshooting or 'ERROR' for minimal logging.
+
 
 Schedule options:
 • name: Unique identifier referenced by EC2 instance tags

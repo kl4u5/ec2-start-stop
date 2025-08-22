@@ -6,12 +6,22 @@
 export const ENV_VARS = {
   SCHEDULES_PARAMETER_NAME: 'SCHEDULES_PARAMETER_NAME',
   DOCUMENTATION_PARAMETER_NAME: 'DOCUMENTATION_PARAMETER_NAME',
+  LOG_LEVEL: 'LOG_LEVEL',
 } as const;
 
 // Default values
 export const DEFAULTS = {
   SCHEDULES_PARAMETER_NAME: '/ec2-start-stop/schedules',
   DOCUMENTATION_PARAMETER_NAME: '/ec2-start-stop/documentation',
+  LOG_LEVEL: 'INFO',
+} as const;
+
+// Log levels
+export const LOG_LEVELS = {
+  DEBUG: 0,
+  INFO: 1,
+  WARN: 2,
+  ERROR: 3,
 } as const;
 
 // AWS tag names
