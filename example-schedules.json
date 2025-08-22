@@ -1,4 +1,8 @@
 {
+  "description": "Example EC2 Start/Stop schedules with notification inheritance",
+  "logLevel": "INFO",
+  "masterEmails": ["admin@example.com", "devops@example.com"],
+  "masterPhones": ["+45XXXXXXXX"],
   "schedules": [
     {
       "name": "dev-servers",
@@ -11,7 +15,9 @@
       "fr": "07:00;22:00",
       "sa": "never;never",
       "su": "never;never",
-      "default": "07:00;22:00"
+      "default": "07:00;22:00",
+      "emails": ["inherited", "dev-team@example.com"],
+      "phones": ["!+45YYYYYYYY"]
     },
     {
       "name": "production-servers",
@@ -24,7 +30,9 @@
       "fr": "06:00;23:00",
       "sa": "08:00;20:00",
       "su": "10:00;18:00",
-      "default": "06:00;23:00"
+      "default": "06:00;23:00",
+      "emails": ["inherited"],
+      "phones": ["inherited"]
     },
     {
       "name": "test-environment",
@@ -37,8 +45,9 @@
       "fr": "09:00;17:00",
       "sa": "never;never",
       "su": "never;never",
-      "default": "09:00;17:00"
+      "default": "09:00;17:00",
+      "emails": ["test-team@example.com"],
+      "phones": []
     }
-  ],
-  "maintainers": ["admin@example.com", "devops@example.com"]
+  ]
 }

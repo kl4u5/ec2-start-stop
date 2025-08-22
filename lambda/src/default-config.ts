@@ -33,13 +33,14 @@ Notes:
 • Disabled schedules (enabled: false) will be ignored
 
 Logging Configuration:
-The Lambda function supports configurable log levels via the LOG_LEVEL environment variable:
+The Lambda function supports configurable log levels via the configuration:
 • DEBUG: All debug information, processing details, and state checks
 • INFO: Important actions (start/stop commands), schedule detection, and summary information (default)
 • WARN: Warnings about configuration issues or unknown schedules
 • ERROR: Only critical errors and failures
 
-Set LOG_LEVEL to 'DEBUG' for detailed troubleshooting or 'ERROR' for minimal logging.
+Set logLevel to 'DEBUG' for detailed troubleshooting or 'ERROR' for minimal logging.
+Changes take effect immediately without redeployment.
 
 
 Schedule options:
@@ -48,6 +49,8 @@ Schedule options:
 • timezone: IANA timezone (e.g., 'Europe/Berlin', 'America/New_York', 'UTC')
 • mo-su: Day-specific schedules (Monday through Sunday)
 • default: Fallback schedule for undefined days
+• emails: Array of email addresses for notifications (supports 'inherited')
+• phones: Array of phone numbers for SMS notifications (supports 'inherited' and '!' prefix)
 
 Examples:
 • '08:00;18:00' - Start at 8 AM, stop at 6 PM
@@ -55,12 +58,30 @@ Examples:
 • '06:00;never' - Start at 6 AM, no stop action
 • 'never;never' - No actions (effectively disabled for that day)
 
+Notification Examples:
+• emails: ['inherited'] - Use master email list
+• emails: ['inherited', 'team@company.com'] - Inherit master + add specific email
+• emails: ['specific@company.com'] - Override with specific email only
+• phones: ['inherited'] - Use master phone list (critical failures only)
+• phones: ['!+45XXXXXXXX'] - Receive all notifications (including non-critical)
+• phones: ['+45XXXXXXXX'] - Receive critical failures only
+
 Configuration Structure:
 {
   "description": "Brief description with reference to documentation parameter",
-  "schedules": [...],
-  "maintainers": [...]
+  "logLevel": "INFO",
+  "masterEmails": ["admin@company.com"],
+  "masterPhones": ["!+45XXXXXXXX"],
+  "schedules": [...]
 }
+
+Notification Configuration:
+• emails: Array of email addresses, can include 'inherited'
+• phones: Array of phone numbers, can include 'inherited'
+• Master values: Set at config level, inherited by individual schedules
+• Non-critical SMS: Prefix phone with '!' for all notifications (e.g., '!+45XXXXXXXX')
+• Default behavior: All schedules inherit from master values
+• Empty master arrays = no notifications by default
 `;
 
 /**
@@ -68,6 +89,9 @@ Configuration Structure:
  */
 export const DEFAULT_SCHEDULES_CONFIG: SchedulesConfiguration = {
   description: `EC2 Start/Stop Automation - see ${DEFAULTS.DOCUMENTATION_PARAMETER_NAME} for detailed documentation`,
+  masterEmails: [], // No default email notifications
+  masterPhones: [], // No default SMS notifications
+  logLevel: 'INFO', // Default log level
   schedules: [
     {
       name: 'sps-tid-server',
@@ -76,6 +100,8 @@ export const DEFAULT_SCHEDULES_CONFIG: SchedulesConfiguration = {
       default: '06:00;22:00',
       sa: '08:00;18:00',
       su: '08:00;22:00',
+      emails: ['inherited'], // Default: inherit from master
+      phones: ['inherited'], // Default: inherit from master
     },
     {
       name: 'test-environment',
@@ -84,6 +110,8 @@ export const DEFAULT_SCHEDULES_CONFIG: SchedulesConfiguration = {
       sa: 'never;never',
       su: 'never;never',
       default: '09:00;17:00',
+      emails: ['inherited'],
+      phones: ['inherited'],
     },
     {
       name: 'example-servers',
@@ -97,7 +125,8 @@ export const DEFAULT_SCHEDULES_CONFIG: SchedulesConfiguration = {
       sa: '11:00;20:00',
       su: '12:00;18:00',
       default: '06:00;23:00',
+      emails: ['inherited'],
+      phones: ['inherited'],
     },
   ],
-  maintainers: ['not-yet@todo.com'],
 };

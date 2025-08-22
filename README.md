@@ -1,9 +1,27 @@
 # EC2 Start/Stop Automation
 
-This AWS CDK project automates the starting and stopping of EC2 instances based
-on configurable schedules stored in AWS Parameter Store. Perfect for cost
-optimization by automatically managing development, testing, and non-production
-environments.
+This AWS CDK project automates the starting and stopping of EC2 i### Schedule
+Format
+
+- **name**: Unique identifier for the schedule (referenced by EC2 instance tags)
+- **enabled**: Boolean flag to enable/disable the entire schedule
+- **timezone**: IANA timezone name (e.g., "Europe/Berlin", "America/New_York",
+  "UTC")
+- **Weekdays**: `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su` with format
+  `"start_time;stop_time"`
+- **default**: Fallback schedule for days not explicitly defined
+- **emails**: Array of email addresses for notifications (supports inheritance)
+- **phones**: Array of phone numbers for SMS notifications (supports inheritance
+  and non-critical options)
+
+### Configuration Options
+
+- **logLevel**: Global log level for Lambda function ("DEBUG", "INFO", "WARN",
+  "ERROR")
+  - Changes take effect immediately without redeployment
+  - Default: "INFO"sed on configurable schedules stored in AWS Parameter Store.
+    Perfect for cost optimization by automatically managing development,
+    testing, and non-production environments.
 
 ## 💰 **Cost Savings**
 
@@ -28,8 +46,12 @@ environments.
 - **⏰ EventBridge Integration**: Reliable 15-minute interval execution
 - **🎯 Range-Based Logic**: Intelligent scheduling that considers entire time
   ranges, not just exact moments
-- **📧 Email Notifications**: Automatic admin alerts for all state changes and
-  failures via Amazon SES
+- **📧 Email Notifications**: Flexible per-schedule and inherited email
+  notifications via Amazon SES
+- **📱 SMS Alerts**: Cost-optimized SMS notifications via Amazon SNS with
+  inheritance support and non-critical options
+- **🔗 Notification Inheritance**: Sophisticated inheritance system allowing
+  schedules to inherit or override master notification settings
 
 ## Architecture
 
@@ -47,6 +69,9 @@ configuration supports comprehensive scheduling patterns:
 ```json
 {
   "description": "EC2 Start/Stop Automation Configuration - defines automated start/stop schedules for EC2 instances based on tags.",
+  "logLevel": "INFO",
+  "masterEmails": ["devops@yourcompany.com", "ops@yourcompany.com"],
+  "masterPhones": ["+45XXXXXXXX"],
   "schedules": [
     {
       "name": "business-hours",
@@ -59,7 +84,9 @@ configuration supports comprehensive scheduling patterns:
       "fr": "08:00;18:00",
       "sa": "never;never",
       "su": "never;never",
-      "default": "08:00;18:00"
+      "default": "08:00;18:00",
+      "emails": ["inherited"],
+      "phones": ["inherited"]
     },
     {
       "name": "dev-servers",
@@ -67,16 +94,19 @@ configuration supports comprehensive scheduling patterns:
       "timezone": "UTC",
       "mo": "07:00;22:00",
       "fr": "07:00;15:00",
-      "default": "never;never"
+      "default": "never;never",
+      "emails": ["dev-team@yourcompany.com"],
+      "phones": ["!+45YYYYYYYY"]
     },
     {
       "name": "always-on",
       "enabled": true,
       "timezone": "UTC",
-      "default": "00:00;never"
+      "default": "00:00;never",
+      "emails": ["inherited", "critical@yourcompany.com"],
+      "phones": ["+45ZZZZZZZZ"]
     }
-  ],
-  "maintainers": ["devops@yourcompany.com"]
+  ]
 }
 ```
 
@@ -89,6 +119,57 @@ configuration supports comprehensive scheduling patterns:
 - **Weekdays**: `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su` with format
   `"start_time;stop_time"`
 - **default**: Fallback schedule for days not explicitly defined
+- **emails**: Array of email addresses for notifications (supports inheritance)
+- **phones**: Array of phone numbers for SMS notifications (supports inheritance
+  and non-critical options)
+
+### Notification System
+
+The system supports a sophisticated inheritance-based notification system:
+
+#### Master Notifications
+
+- **masterEmails**: Global email list inherited by schedules
+- **masterPhones**: Global phone list inherited by schedules
+
+#### Schedule-Level Notifications
+
+- **emails**: Email notifications for this schedule
+  - `["inherited"]` - Use master emails only
+  - `["inherited", "extra@company.com"]` - Inherit master + add specific emails
+  - `["specific@company.com"]` - Override master with specific emails
+- **phones**: SMS notifications for this schedule
+  - `["inherited"]` - Use master phones for critical failures only
+  - `["!+45XXXXXXXX"]` - Receive all notifications (including non-critical)
+  - `["+45XXXXXXXX"]` - Receive critical failures only
+  - `["inherited", "!+45YYYYYYYY"]` - Inherit master + add non-critical SMS
+
+#### SMS Cost Optimization
+
+- **Default**: SMS sent only for critical failures (start/stop failures)
+- **Non-Critical SMS**: Prefix phone numbers with `!` to receive all
+  notifications
+- **Automatic Deduplication**: Prevents duplicate notifications when inheriting
+
+### Dynamic Configuration
+
+The system supports **real-time configuration changes** without redeployment:
+
+- **Log Level**: Change `logLevel` in Parameter Store for immediate effect
+- **Notifications**: Update `masterEmails`, `masterPhones`, or per-schedule
+  settings
+- **Schedules**: Add, modify, or disable schedules without Lambda redeployment
+- **Validation**: Configuration is validated on each Lambda execution
+
+Example log level change:
+
+```bash
+# Enable debug logging for troubleshooting
+aws ssm put-parameter --name "/ec2-start-stop/schedules" --value '{"logLevel": "DEBUG", ...}' --overwrite
+
+# Revert to minimal logging
+aws ssm put-parameter --name "/ec2-start-stop/schedules" --value '{"logLevel": "ERROR", ...}' --overwrite
+```
 
 ### Time Format Examples
 
@@ -97,6 +178,59 @@ configuration supports comprehensive scheduling patterns:
 - **`"06:00;never"`** - Start at 6 AM, no stop action (run indefinitely)
 - **`"never;never"`** - No actions (effectively disabled for that day)
 - **`"00:00;never"`** - Always running (24/7 service)
+
+### Notification Configuration Examples
+
+#### Basic Inheritance
+
+```json
+{
+  "masterEmails": ["ops@company.com"],
+  "masterPhones": ["+45XXXXXXXX"],
+  "schedules": [
+    {
+      "name": "production",
+      "emails": ["inherited"],
+      "phones": ["inherited"]
+    }
+  ]
+}
+```
+
+#### Mixed Inheritance and Overrides
+
+```json
+{
+  "masterEmails": ["ops@company.com"],
+  "masterPhones": ["+45XXXXXXXX"],
+  "schedules": [
+    {
+      "name": "development",
+      "emails": ["inherited", "dev-team@company.com"],
+      "phones": ["!+45YYYYYYYY"]
+    },
+    {
+      "name": "critical-production",
+      "emails": ["ops@company.com", "management@company.com"],
+      "phones": ["+45XXXXXXXX", "!+45ZZZZZZZZ"]
+    }
+  ]
+}
+```
+
+#### No Notifications
+
+```json
+{
+  "schedules": [
+    {
+      "name": "silent-schedule",
+      "emails": [],
+      "phones": []
+    }
+  ]
+}
+```
 
 ### Scheduling Logic
 
@@ -231,15 +365,27 @@ aws ssm get-parameter --name "/ec2-start-stop/schedules" --query "Parameter.Valu
 cat > schedules.json << 'EOF'
 {
   "description": "Production EC2 schedules",
+  "logLevel": "INFO",
+  "masterEmails": ["devops@company.com", "ops@company.com"],
+  "masterPhones": ["+45XXXXXXXX"],
   "schedules": [
     {
       "name": "production-hours",
       "enabled": true,
       "timezone": "Europe/London",
-      "default": "06:00;22:00"
+      "default": "06:00;22:00",
+      "emails": ["inherited"],
+      "phones": ["inherited"]
+    },
+    {
+      "name": "development",
+      "enabled": true,
+      "timezone": "Europe/London",
+      "default": "08:00;18:00",
+      "emails": ["inherited", "dev-team@company.com"],
+      "phones": ["!+45YYYYYYYY"]
     }
-  ],
-  "maintainers": ["devops@company.com"]
+  ]
 }
 EOF
 
@@ -252,24 +398,52 @@ aws ssm put-parameter --name "/ec2-start-stop/schedules" --value file://schedule
 #### Email Notifications
 
 The system automatically sends email notifications for all EC2 instance state
-changes and failures:
+changes and failures, plus SMS alerts for critical failures:
+
+**Email Notifications (All Events):**
 
 - **Instance Started**: Notification when an instance is successfully started
 - **Instance Stopped**: Notification when an instance is successfully stopped
 - **Start Failed**: Alert when instance start operation fails
 - **Stop Failed**: Alert when instance stop operation fails
 
+**SMS Notifications:**
+
+- **Critical Failures**: Start/stop failures sent to all configured phone
+  numbers
+- **Non-Critical Events**: Success notifications sent only to phones with `!`
+  prefix
+- **Cost-Optimized**: By default, only critical failures trigger SMS
+
 **Configuration:**
 
-- Admin email is configured via the `ADMIN_EMAIL` environment variable
-- Requires proper SES permissions in the Lambda execution role
+- Notifications are configured per-schedule with inheritance support in
+  Parameter Store
+- Master notifications can be inherited by individual schedules
+- No longer uses environment variables - all configuration is in Parameter Store
+- Requires proper SES and SNS permissions in the Lambda execution role
+
+**Cost Analysis:**
+
+- **Email**: Free (within SES free tier limits)
+- **SMS**: ~€0.0395 per SMS to Denmark (~0.30 DKK)
+- **Estimated SMS cost**: 2-4 failures/month = ~1-2 DKK/month (very low for
+  critical alerts)
+- **Non-Critical SMS**: Optional feature for those wanting all notifications
 
 **SES Setup Requirements:**
 
 1. **Verify the admin email address in Amazon SES**:
 
    ```bash
-   aws ses verify-email-identity --email-address your-admin@email.com
+   # Verify your admin email
+   aws ses verify-email-identity --email-address your-admin@email.com --profile your-profile
+
+   # Check verification status
+   aws ses get-identity-verification-attributes --identities your-admin@email.com --profile your-profile
+
+   # List all verified identities
+   aws ses list-identities --profile your-profile
    ```
 
    Check your email and click the verification link.
@@ -294,6 +468,20 @@ changes and failures:
    **Only request production access if you need to:**
    - Send alerts to multiple team members with unverified emails
    - Send more than 200 notifications per day (very unlikely for EC2 automation)
+
+4. **SMS Setup (Optional - for critical failure alerts)**:
+
+   ```bash
+   # No pre-verification needed for SMS - works immediately after deployment
+   # Just ensure your phone number is in international format: +45XXXXXXXX
+   ```
+
+   **SMS Configuration:**
+   - Configure phone numbers in Parameter Store schedule configuration
+   - Use international format (e.g., +45XXXXXXXX)
+   - Prefix with `!` for non-critical notifications (e.g., !+45XXXXXXXX)
+   - SMS sent for critical failures by default, non-critical optional
+   - Cost: ~€0.0395 per SMS to Denmark (~0.30 DKK per SMS)
 
 #### Check Lambda Execution
 

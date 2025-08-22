@@ -6,17 +6,14 @@
 export const ENV_VARS = {
   SCHEDULES_PARAMETER_NAME: 'SCHEDULES_PARAMETER_NAME',
   DOCUMENTATION_PARAMETER_NAME: 'DOCUMENTATION_PARAMETER_NAME',
-  LOG_LEVEL: 'LOG_LEVEL',
-  ADMIN_EMAIL: 'ADMIN_EMAIL',
   SES_REGION: 'SES_REGION',
+  SNS_REGION: 'SNS_REGION',
 } as const;
 
 // Default values
 export const DEFAULTS = {
   SCHEDULES_PARAMETER_NAME: '/ec2-start-stop/schedules',
   DOCUMENTATION_PARAMETER_NAME: '/ec2-start-stop/documentation',
-  LOG_LEVEL: 'INFO',
-  ADMIN_EMAIL: 'kl4u5.j3n53n@gmail.com',
 } as const;
 
 // Log levels

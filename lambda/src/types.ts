@@ -1,161 +1,22 @@
 /**
- * TypeScript interfaces and configuration for EC2 start/stop schedules
- * This is the single source of truth for all schedule-related types and configuration
+ * Barrel exports for cleaner imports
+ * Re-exports all interfaces and utilities from the modular files
  */
 
-import { ACTIONS, WEEKDAY_KEYS } from './constants';
+// Type definitions
+export type { ResolvedNotifications, Schedule, SchedulesConfiguration, TimeAction } from './interfaces';
 
-export interface Schedule {
-  /** Unique name identifier for the schedule */
-  name: string;
-  /** Whether this schedule is enabled */
-  enabled: boolean;
-  /** IANA timezone name (e.g., 'Europe/Berlin', 'America/New_York') */
-  timezone: string;
-  /** Monday schedule in format 'HH:MM;HH:MM' or 'never;HH:MM' or 'HH:MM;never' */
-  mo?: string;
-  /** Tuesday schedule in format 'HH:MM;HH:MM' or 'never;HH:MM' or 'HH:MM;never' */
-  tu?: string;
-  /** Wednesday schedule in format 'HH:MM;HH:MM' or 'never;HH:MM' or 'HH:MM;never' */
-  we?: string;
-  /** Thursday schedule in format 'HH:MM;HH:MM' or 'never;HH:MM' or 'HH:MM;never' */
-  th?: string;
-  /** Friday schedule in format 'HH:MM;HH:MM' or 'never;HH:MM' or 'HH:MM;never' */
-  fr?: string;
-  /** Saturday schedule in format 'HH:MM;HH:MM' or 'never;HH:MM' or 'HH:MM;never' */
-  sa?: string;
-  /** Sunday schedule in format 'HH:MM;HH:MM' or 'never;HH:MM' or 'HH:MM;never' */
-  su?: string;
-  /** Default schedule used for days not explicitly defined */
-  default?: string;
-}
+// Validation utilities
+export {
+  validateNotificationArrays,
+  validateSchedule,
+  validateScheduleConfig,
+  validateSingleTime,
+  validateTimeFormat,
+} from './validation';
 
-export interface SchedulesConfiguration {
-  /** Array of schedule definitions */
-  schedules: Schedule[];
-  /** Email addresses of users who can manage schedules via web UI */
-  maintainers: string[];
-  /** Optional description of the configuration and its purpose */
-  description?: string;
-}
+// Notification resolution
+export { resolveInheritedNotifications } from './notification-resolver';
 
-export interface TimeAction {
-  /** Time in HH:MM format */
-  time: string;
-  /** Action to perform: start or stop */
-  action: typeof ACTIONS.START | typeof ACTIONS.STOP;
-}
-
-/**
- * Validates a schedule configuration
- */
-export function validateScheduleConfig(config: unknown): config is SchedulesConfiguration {
-  if (!config || typeof config !== 'object') {
-    return false;
-  }
-
-  const obj = config as Record<string, unknown>;
-
-  if (!Array.isArray(obj.schedules)) {
-    return false;
-  }
-
-  if (!Array.isArray(obj.maintainers)) {
-    return false;
-  }
-
-  // Validate each schedule
-  for (const schedule of obj.schedules) {
-    if (!validateSchedule(schedule)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/**
- * Validates a single schedule
- */
-export function validateSchedule(schedule: unknown): schedule is Schedule {
-  if (!schedule || typeof schedule !== 'object') {
-    return false;
-  }
-
-  const obj = schedule as Record<string, unknown>;
-
-  if (typeof obj.name !== 'string' || (obj.name as string).trim() === '') {
-    return false;
-  }
-
-  if (typeof obj.enabled !== 'boolean') {
-    return false;
-  }
-
-  if (typeof obj.timezone !== 'string' || (obj.timezone as string).trim() === '') {
-    return false;
-  }
-
-  // Validate time format for each day if present
-  const timeFields = [...WEEKDAY_KEYS, 'default'];
-  for (const field of timeFields) {
-    if (obj[field] !== undefined) {
-      if (!validateTimeFormat(obj[field] as string)) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-/**
- * Validates time format: 'HH:MM;HH:MM' or 'never;HH:MM' or 'HH:MM;never' or 'never;never'
- */
-export function validateTimeFormat(timeString: string): boolean {
-  if (typeof timeString !== 'string') {
-    return false;
-  }
-
-  // Handle different separators (, or ;)
-  const parts = timeString.includes(';') ? timeString.split(';') : timeString.split(',');
-
-  if (parts.length !== 2) {
-    return false;
-  }
-
-  const [startTime, stopTime] = parts.map(p => p.trim());
-
-  return validateSingleTime(startTime) && validateSingleTime(stopTime);
-}
-
-/**
- * Validates a single time: 'HH:MM' or 'never'
- */
-export function validateSingleTime(time: string): boolean {
-  if (time === 'never') {
-    return true;
-  }
-
-  const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-  return timeRegex.test(time);
-}
-
-/**
- * Helper function to create a schedule with all required fields
- */
-export function createSchedule(config: Partial<Schedule> & Pick<Schedule, 'name' | 'enabled' | 'timezone'>): Schedule {
-  return {
-    name: config.name,
-    enabled: config.enabled,
-    timezone: config.timezone,
-    mo: config.mo,
-    tu: config.tu,
-    we: config.we,
-    th: config.th,
-    fr: config.fr,
-    sa: config.sa,
-    su: config.su,
-    default: config.default,
-  };
-}
+// Schedule creation utilities
+export { createSchedule } from './schedule-factory';

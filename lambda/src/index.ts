@@ -17,12 +17,13 @@ import {
   StopInstancesCommand,
 } from '@aws-sdk/client-ec2';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { PublishCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { DateTime } from 'luxon';
 
-// Import types from our local types module
+// Import types and utilities from our types module
 import type { Schedule, SchedulesConfiguration } from './types';
-import { validateScheduleConfig } from './types';
+import { resolveInheritedNotifications, validateScheduleConfig } from './types';
 
 // Import constants
 import {
@@ -47,16 +48,21 @@ const defaultSesClient = new SESClient({
   // If not set, AWS SDK will use the default region from the Lambda environment
   ...(process.env[ENV_VARS.SES_REGION] && { region: process.env[ENV_VARS.SES_REGION] }),
 });
+const defaultSnsClient = new SNSClient({
+  // SNS region will be set via environment variable (CDK sets this to deployment region)
+  // If not set, AWS SDK will use the default region from the Lambda environment
+  ...(process.env[ENV_VARS.SNS_REGION] && { region: process.env[ENV_VARS.SNS_REGION] }),
+});
 
 const SCHEDULES_PARAMETER_NAME = process.env[ENV_VARS.SCHEDULES_PARAMETER_NAME] || DEFAULTS.SCHEDULES_PARAMETER_NAME;
-const ADMIN_EMAIL = process.env[ENV_VARS.ADMIN_EMAIL] || DEFAULTS.ADMIN_EMAIL;
 
-// Configure logging
-const LOG_LEVEL = process.env[ENV_VARS.LOG_LEVEL] || DEFAULTS.LOG_LEVEL;
-const CURRENT_LOG_LEVEL = LOG_LEVELS[LOG_LEVEL as keyof typeof LOG_LEVELS] ?? LOG_LEVELS.INFO;
+// Simple logging utility with dynamic log level
+let CURRENT_LOG_LEVEL: number = LOG_LEVELS.INFO; // Default until configuration is loaded
 
-// Simple logging utility
 const logger = {
+  setLogLevel: (logLevel: string) => {
+    CURRENT_LOG_LEVEL = LOG_LEVELS[logLevel as keyof typeof LOG_LEVELS] ?? LOG_LEVELS.INFO;
+  },
   debug: (message: string, ...args: unknown[]) => {
     if (CURRENT_LOG_LEVEL <= LOG_LEVELS.DEBUG) {
       console.log(`[DEBUG] ${message}`, ...args);
@@ -84,27 +90,45 @@ interface Clients {
   ec2Client?: EC2Client;
   ssmClient?: SSMClient;
   sesClient?: SESClient;
+  snsClient?: SNSClient;
 }
 
 // Email notification function
-async function sendEmailNotification(
+async function sendEmailNotifications(
   type: keyof typeof EMAIL_TYPES,
   instanceId: string,
+  emails: string[],
   errorMessage?: string,
   sesClient: SESClient = defaultSesClient
 ): Promise<void> {
-  // Skip if admin email is not configured
-  if (!ADMIN_EMAIL || ADMIN_EMAIL.trim() === '') {
-    logger.debug(`Skipping email notification for ${type}: ${instanceId} - ADMIN_EMAIL not configured`);
+  if (emails.length === 0) {
+    logger.debug(`Skipping email notification for ${type}: ${instanceId} - no email addresses configured`);
+    return;
+  }
+
+  for (const email of emails) {
+    await sendSingleEmailNotification(type, instanceId, email, errorMessage, sesClient);
+  }
+}
+
+// Single email notification function
+async function sendSingleEmailNotification(
+  type: keyof typeof EMAIL_TYPES,
+  instanceId: string,
+  email: string,
+  errorMessage?: string,
+  sesClient: SESClient = defaultSesClient
+): Promise<void> {
+  // Skip if email is not configured
+  if (!email || email.trim() === '') {
+    logger.debug(`Skipping email notification for ${type}: ${instanceId} - email not configured`);
     return;
   }
 
   // Basic email validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(ADMIN_EMAIL)) {
-    logger.error(
-      `Invalid ADMIN_EMAIL format '${ADMIN_EMAIL}' - skipping email notification for ${type}: ${instanceId}`
-    );
+  if (!emailRegex.test(email)) {
+    logger.error(`Invalid email format '${email}' - skipping email notification for ${type}: ${instanceId}`);
     return;
   }
 
@@ -135,9 +159,9 @@ async function sendEmailNotification(
     }
 
     const command = new SendEmailCommand({
-      Source: ADMIN_EMAIL,
+      Source: email,
       Destination: {
-        ToAddresses: [ADMIN_EMAIL],
+        ToAddresses: [email],
       },
       Message: {
         Subject: {
@@ -154,9 +178,100 @@ async function sendEmailNotification(
     });
 
     await sesClient.send(command);
-    logger.debug(`Email notification sent for ${type}: ${instanceId}`);
+    logger.debug(`Email notification sent for ${type}: ${instanceId} to ${email}`);
   } catch (error) {
-    logger.error(`Failed to send email notification for ${type}: ${instanceId}`, error);
+    logger.error(`Failed to send email notification for ${type}: ${instanceId} to ${email}`, error);
+  }
+}
+
+// SMS notification function
+async function sendSmsNotifications(
+  type: keyof typeof EMAIL_TYPES,
+  instanceId: string,
+  phones: string[],
+  errorMessage?: string,
+  snsClient: SNSClient = defaultSnsClient
+): Promise<void> {
+  if (phones.length === 0) {
+    logger.debug(`Skipping SMS notification for ${type}: ${instanceId} - no phone numbers configured`);
+    return;
+  }
+
+  // Check if we should send SMS for this notification type
+  const isCriticalFailure = type === EMAIL_TYPES.START_FAILED || type === EMAIL_TYPES.STOP_FAILED;
+
+  for (const phone of phones) {
+    // Check if this specific phone should receive non-critical notifications
+    const hasNonCriticalSms = phone.startsWith('!');
+
+    // Skip non-critical notifications for phones without ! prefix
+    if (!isCriticalFailure && !hasNonCriticalSms) {
+      logger.debug(
+        `Skipping SMS for ${type}: ${instanceId} to ${phone} - not a critical failure and phone not configured for non-critical SMS`
+      );
+      continue;
+    }
+
+    await sendSingleSmsNotification(type, instanceId, phone, errorMessage, snsClient);
+  }
+}
+
+// Single SMS notification function
+async function sendSingleSmsNotification(
+  type: keyof typeof EMAIL_TYPES,
+  instanceId: string,
+  phone: string,
+  errorMessage?: string,
+  snsClient: SNSClient = defaultSnsClient
+): Promise<void> {
+  // Skip if phone is not configured
+  if (!phone || phone.trim() === '') {
+    logger.debug(`Skipping SMS notification for ${type}: ${instanceId} - phone not configured`);
+    return;
+  }
+
+  // Clean the phone number (remove ! prefix for actual phone number use)
+  const cleanPhone = phone.startsWith('!') ? phone.slice(1) : phone;
+
+  // Basic phone number validation (international format)
+  const phoneRegex = /^\+[1-9]\d{10,14}$/;
+  if (!phoneRegex.test(cleanPhone)) {
+    logger.error(
+      `Invalid phone format '${cleanPhone}' - must be in format +45XXXXXXXX - skipping SMS notification for ${type}: ${instanceId}`
+    );
+    return;
+  }
+
+  try {
+    const timestamp = DateTime.utc().toFormat('yyyy-MM-dd HH:mm:ss z');
+    let message = '';
+
+    switch (type) {
+      case EMAIL_TYPES.START_FAILED:
+        message = `🚨 CRITICAL: EC2 instance ${instanceId} failed to start at ${timestamp}. Error: ${errorMessage?.substring(0, 100)}${errorMessage && errorMessage.length > 100 ? '...' : ''}`;
+        break;
+      case EMAIL_TYPES.STOP_FAILED:
+        message = `🚨 CRITICAL: EC2 instance ${instanceId} failed to stop at ${timestamp}. Error: ${errorMessage?.substring(0, 100)}${errorMessage && errorMessage.length > 100 ? '...' : ''}`;
+        break;
+      case EMAIL_TYPES.INSTANCE_STARTED:
+        message = `✅ EC2 instance ${instanceId} started successfully at ${timestamp}`;
+        break;
+      case EMAIL_TYPES.INSTANCE_STOPPED:
+        message = `⏹️ EC2 instance ${instanceId} stopped successfully at ${timestamp}`;
+        break;
+      default:
+        return;
+    }
+
+    const command = new PublishCommand({
+      PhoneNumber: cleanPhone,
+      Message: message,
+    });
+
+    await snsClient.send(command);
+    logger.debug(`SMS notification sent for ${type}: ${instanceId} to ${cleanPhone}`);
+  } catch (error) {
+    logger.error(`Failed to send SMS notification for ${type}: ${instanceId} to ${phone}`, error);
   }
 }
 
@@ -165,12 +280,20 @@ export const handler = async (event: unknown, context?: unknown, clients: Client
   const ec2Client = clients.ec2Client || defaultEc2Client;
   const ssmClient = clients.ssmClient || defaultSsmClient;
   const sesClient = clients.sesClient || defaultSesClient;
+  const snsClient = clients.snsClient || defaultSnsClient;
 
   logger.info('Starting EC2 start/stop scheduler...');
 
   try {
     // Get schedules configuration from Parameter Store
     const schedulesConfig = await getSchedulesConfig(ssmClient);
+
+    // Configure dynamic log level from Parameter Store
+    if (schedulesConfig.logLevel) {
+      logger.setLogLevel(schedulesConfig.logLevel);
+      logger.debug(`Log level set to: ${schedulesConfig.logLevel}`);
+    }
+
     logger.debug(`Found ${schedulesConfig.schedules.length} schedule(s)`);
 
     // Get all EC2 instances with the start-stop-schedule tag
@@ -184,7 +307,7 @@ export const handler = async (event: unknown, context?: unknown, clients: Client
 
     // Process each instance
     for (const instance of instances) {
-      await processInstance(instance, schedulesConfig, ec2Client, sesClient);
+      await processInstance(instance, schedulesConfig, ec2Client, sesClient, snsClient);
     }
 
     logger.info('EC2 start/stop scheduler completed successfully');
@@ -243,7 +366,8 @@ async function processInstance(
   instance: Instance,
   schedulesConfig: SchedulesConfiguration,
   ec2Client: EC2Client,
-  sesClient: SESClient
+  sesClient: SESClient,
+  snsClient: SNSClient
 ): Promise<void> {
   if (!instance.InstanceId || !instance.Tags) {
     logger.debug('Instance missing ID or tags, skipping');
@@ -311,16 +435,19 @@ async function processInstance(
   const shouldStart = shouldTriggerStartAction(currentTime, scheduleInfo.startTime, scheduleInfo.stopTime);
   const shouldStop = shouldTriggerStopAction(currentTime, scheduleInfo.startTime, scheduleInfo.stopTime);
 
+  // Resolve notifications for this schedule
+  const { emails, phones } = resolveInheritedNotifications(schedule, schedulesConfig);
+
   if (shouldStart) {
     logger.info(
       `Should START instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`
     );
-    await executeAction(instance, ACTIONS.START, ec2Client, sesClient);
+    await executeAction(instance, ACTIONS.START, emails, phones, ec2Client, sesClient, snsClient);
   } else if (shouldStop) {
     logger.info(
       `Should STOP instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`
     );
-    await executeAction(instance, ACTIONS.STOP, ec2Client, sesClient);
+    await executeAction(instance, ACTIONS.STOP, emails, phones, ec2Client, sesClient, snsClient);
   } else {
     logger.debug(
       `No action needed for instance ${instance.InstanceId}: current time ${currentTime}, schedule ${daySchedule}`
@@ -397,8 +524,11 @@ function shouldTriggerStopAction(currentTime: string, scheduledStartTime: string
 async function executeAction(
   instance: Instance,
   action: 'start' | 'stop',
+  emails: string[],
+  phones: string[],
   ec2Client: EC2Client,
-  sesClient: SESClient
+  sesClient: SESClient,
+  snsClient: SNSClient
 ): Promise<void> {
   if (!instance.InstanceId) {
     return;
@@ -420,10 +550,12 @@ async function executeAction(
     try {
       await ec2Client.send(command);
       logger.info(`Successfully started instance ${instance.InstanceId}`);
-      await sendEmailNotification(EMAIL_TYPES.INSTANCE_STARTED, instance.InstanceId, undefined, sesClient);
+      await sendEmailNotifications(EMAIL_TYPES.INSTANCE_STARTED, instance.InstanceId, emails, undefined, sesClient);
+      await sendSmsNotifications(EMAIL_TYPES.INSTANCE_STARTED, instance.InstanceId, phones, undefined, snsClient);
     } catch (error) {
       logger.error(`Failed to start instance ${instance.InstanceId}:`, error);
-      await sendEmailNotification(EMAIL_TYPES.START_FAILED, instance.InstanceId, String(error), sesClient);
+      await sendEmailNotifications(EMAIL_TYPES.START_FAILED, instance.InstanceId, emails, String(error), sesClient);
+      await sendSmsNotifications(EMAIL_TYPES.START_FAILED, instance.InstanceId, phones, String(error), snsClient);
     }
   } else if (
     action === ACTIONS.STOP &&
@@ -438,10 +570,12 @@ async function executeAction(
     try {
       await ec2Client.send(command);
       logger.info(`Successfully stopped instance ${instance.InstanceId}`);
-      await sendEmailNotification(EMAIL_TYPES.INSTANCE_STOPPED, instance.InstanceId, undefined, sesClient);
+      await sendEmailNotifications(EMAIL_TYPES.INSTANCE_STOPPED, instance.InstanceId, emails, undefined, sesClient);
+      await sendSmsNotifications(EMAIL_TYPES.INSTANCE_STOPPED, instance.InstanceId, phones, undefined, snsClient);
     } catch (error) {
       logger.error(`Failed to stop instance ${instance.InstanceId}:`, error);
-      await sendEmailNotification(EMAIL_TYPES.STOP_FAILED, instance.InstanceId, String(error), sesClient);
+      await sendEmailNotifications(EMAIL_TYPES.STOP_FAILED, instance.InstanceId, emails, String(error), sesClient);
+      await sendSmsNotifications(EMAIL_TYPES.STOP_FAILED, instance.InstanceId, phones, String(error), snsClient);
     }
   } else {
     logger.debug(
