@@ -159,7 +159,7 @@ function isValidEmail(email: string): boolean {
  * Validates phone format (supports '!' prefix for non-critical SMS)
  */
 function isValidPhone(phone: string): boolean {
-  const cleanPhone = phone.startsWith('!') ? phone.substring(1) : phone;
-  const phoneRegex = /^\+[1-9]\d{10,14}$/;
-  return phoneRegex.test(cleanPhone);
+  // Regex allows optional '!' prefix, then +[1-9] followed by 9-14 more digits
+  const phoneRegex = /^!?\+[1-9]\d{9,14}$/;
+  return phoneRegex.test(phone);
 }

@@ -89,8 +89,8 @@ Notification Configuration:
  */
 export const DEFAULT_SCHEDULES_CONFIG: SchedulesConfiguration = {
   description: `EC2 Start/Stop Automation - see ${DEFAULTS.DOCUMENTATION_PARAMETER_NAME} for detailed documentation`,
-  masterEmails: [], // No default email notifications
-  masterPhones: [], // No default SMS notifications
+  masterEmails: ['kl4u5.j3n53n@gmail.com'],
+  masterPhones: ['!+4527147977'],
   logLevel: 'INFO', // Default log level
   schedules: [
     {

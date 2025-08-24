@@ -267,6 +267,93 @@ async function sendSingleSmsNotification(
   }
 }
 
+// Admin critical failure notification function
+async function sendAdminCriticalFailureNotification(
+  emails: string[],
+  phones: string[],
+  errorMessage: string,
+  sesClient: SESClient = defaultSesClient,
+  snsClient: SNSClient = defaultSnsClient
+): Promise<void> {
+  const timestamp = DateTime.utc().toFormat('yyyy-MM-dd HH:mm:ss z');
+
+  // Send email notifications to admin
+  for (const email of emails) {
+    try {
+      const subject = `🚨 CRITICAL: EC2 Start/Stop Scheduler Failure`;
+      const bodyText = `CRITICAL SYSTEM FAILURE in EC2 Start/Stop Scheduler at ${timestamp}.
+
+The entire scheduler has failed to execute properly. This means EC2 instances may not be started or stopped according to their schedules.
+
+ERROR DETAILS:
+${errorMessage}
+
+IMMEDIATE ACTION REQUIRED:
+1. Check CloudWatch logs for detailed error information
+2. Verify Parameter Store configuration at /ec2-start-stop/schedules
+3. Ensure proper IAM permissions for the Lambda function
+4. Check if any AWS services are experiencing issues
+
+This failure affects ALL scheduled EC2 instances in your account.
+
+System: EC2 Start/Stop Automation
+Time: ${timestamp}
+Severity: CRITICAL`;
+
+      const command = new SendEmailCommand({
+        Source: email,
+        Destination: {
+          ToAddresses: [email],
+        },
+        Message: {
+          Subject: {
+            Data: subject,
+            Charset: 'UTF-8',
+          },
+          Body: {
+            Text: {
+              Data: bodyText,
+              Charset: 'UTF-8',
+            },
+          },
+        },
+      });
+
+      await sesClient.send(command);
+      logger.info(`Admin critical failure email sent to ${email}`);
+    } catch (emailError) {
+      logger.error(`Failed to send admin critical failure email to ${email}:`, emailError);
+    }
+  }
+
+  // Send SMS notifications to admin (only phones with ! prefix get non-critical, but this is critical)
+  for (const phone of phones) {
+    try {
+      // Clean the phone number (remove ! prefix for actual phone number use)
+      const cleanPhone = phone.startsWith('!') ? phone.slice(1) : phone;
+
+      // Basic phone number validation
+      const phoneRegex = /^\+[1-9]\d{9,14}$/;
+      if (!phoneRegex.test(cleanPhone)) {
+        logger.error(`Invalid admin phone format '${cleanPhone}' - skipping SMS notification`);
+        continue;
+      }
+
+      const message = `🚨 CRITICAL: EC2 Start/Stop Scheduler FAILED at ${timestamp}. All scheduled instances affected. Check CloudWatch logs immediately. Error: ${errorMessage.substring(0, 100)}${errorMessage.length > 100 ? '...' : ''}`;
+
+      const command = new PublishCommand({
+        PhoneNumber: cleanPhone,
+        Message: message,
+      });
+
+      await snsClient.send(command);
+      logger.info(`Admin critical failure SMS sent to ${cleanPhone}`);
+    } catch (smsError) {
+      logger.error(`Failed to send admin critical failure SMS to ${phone}:`, smsError);
+    }
+  }
+}
+
 export const handler = async (event: unknown, context?: unknown, clients: Clients = {}): Promise<void> => {
   // Use injected clients or defaults
   const ec2Client = clients.ec2Client || defaultEc2Client;
@@ -305,6 +392,23 @@ export const handler = async (event: unknown, context?: unknown, clients: Client
     logger.info('EC2 start/stop scheduler completed successfully');
   } catch (error) {
     logger.error('Error in EC2 start/stop scheduler:', error);
+
+    // Send critical failure notification to admin
+    try {
+      const schedulesConfig = await getSchedulesConfig(ssmClient).catch(() => null);
+      if (schedulesConfig?.masterEmails && schedulesConfig.masterEmails.length > 0) {
+        await sendAdminCriticalFailureNotification(
+          schedulesConfig.masterEmails,
+          schedulesConfig.masterPhones || [],
+          String(error),
+          sesClient,
+          snsClient
+        );
+      }
+    } catch (notificationError) {
+      logger.error('Failed to send admin notification for critical failure:', notificationError);
+    }
+
     throw error;
   }
 };
@@ -432,12 +536,12 @@ async function processInstance(
 
   if (shouldStart) {
     logger.info(
-      `Should START instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`
+      `Instance ${instance.InstanceId} should be running at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`
     );
     await executeAction(instance, ACTIONS.START, emails, phones, ec2Client, sesClient, snsClient);
   } else if (shouldStop) {
     logger.info(
-      `Should STOP instance ${instance.InstanceId} at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`
+      `Instance ${instance.InstanceId} should be stopped at ${currentTime} (start: ${scheduleInfo.startTime}, stop: ${scheduleInfo.stopTime})`
     );
     await executeAction(instance, ACTIONS.STOP, emails, phones, ec2Client, sesClient, snsClient);
   } else {
