@@ -352,12 +352,99 @@ Severity: CRITICAL`;
   }
 }
 
+// Test functions for development and debugging
+async function testConfigValidation(ssmClient: SSMClient): Promise<void> {
+  logger.info('🧪 Testing configuration validation...');
+
+  try {
+    const schedulesConfig = await getSchedulesConfig(ssmClient);
+    logger.info('✅ Configuration validation PASSED');
+    logger.info(`📋 Found ${schedulesConfig.schedules.length} valid schedule(s)`);
+    logger.info(`📧 Master emails: ${schedulesConfig.masterEmails?.length || 0}`);
+    logger.info(`📱 Master phones: ${schedulesConfig.masterPhones?.length || 0}`);
+    logger.info(`📊 Log level: ${schedulesConfig.logLevel || 'INFO'}`);
+
+    // Validate each schedule
+    for (const schedule of schedulesConfig.schedules) {
+      logger.info(
+        `   - Schedule "${schedule.name}": ${schedule.enabled ? 'enabled' : 'disabled'} (${schedule.timezone})`
+      );
+    }
+  } catch (error) {
+    logger.error('❌ Configuration validation FAILED');
+    logger.error(`💥 Error: ${String(error)}`);
+    throw error;
+  }
+}
+
+async function testCriticalFailure(ssmClient: SSMClient, sesClient: SESClient, snsClient: SNSClient): Promise<void> {
+  logger.info('🧪 Testing critical failure notifications...');
+
+  try {
+    // Get configuration for admin notifications
+    const schedulesConfig = await getSchedulesConfig(ssmClient);
+
+    if (!schedulesConfig.masterEmails || schedulesConfig.masterEmails.length === 0) {
+      logger.warn('⚠️  No master emails configured - skipping email test');
+    }
+
+    if (!schedulesConfig.masterPhones || schedulesConfig.masterPhones.length === 0) {
+      logger.warn('⚠️  No master phones configured - skipping SMS test');
+    }
+
+    if (schedulesConfig.masterEmails?.length === 0 && schedulesConfig.masterPhones?.length === 0) {
+      throw new Error('No master emails or phones configured for admin notifications');
+    }
+
+    // Simulate critical failure
+    const testError =
+      'TEST CRITICAL FAILURE: This is a simulated critical system failure for testing admin notifications. All systems are actually functioning normally.';
+
+    logger.info('📧 Sending test admin notifications...');
+    await sendAdminCriticalFailureNotification(
+      schedulesConfig.masterEmails || [],
+      schedulesConfig.masterPhones || [],
+      testError,
+      sesClient,
+      snsClient
+    );
+
+    logger.info('✅ Critical failure test COMPLETED');
+    logger.info(`📧 Sent to ${schedulesConfig.masterEmails?.length || 0} email(s)`);
+    logger.info(`📱 Sent to ${schedulesConfig.masterPhones?.length || 0} phone(s)`);
+    logger.info('🔍 Check your email and SMS for test notifications');
+  } catch (error) {
+    logger.error('❌ Critical failure test FAILED');
+    logger.error(`💥 Error: ${String(error)}`);
+    throw error;
+  }
+}
+
 export const handler = async (event: unknown, context?: unknown, clients: Clients = {}): Promise<void> => {
   // Use injected clients or defaults
   const ec2Client = clients.ec2Client || defaultEc2Client;
   const ssmClient = clients.ssmClient || defaultSsmClient;
   const sesClient = clients.sesClient || defaultSesClient;
   const snsClient = clients.snsClient || defaultSnsClient;
+
+  // Check for testing modes
+  const eventObj = event as Record<string, unknown> | null;
+  const testMode = eventObj?.test as string | undefined;
+
+  if (testMode) {
+    logger.info(`Running in test mode: ${testMode}`);
+
+    switch (testMode) {
+      case 'config':
+        return await testConfigValidation(ssmClient);
+
+      case 'critical':
+        return await testCriticalFailure(ssmClient, sesClient, snsClient);
+
+      default:
+        throw new Error(`Unknown test mode: ${testMode}. Valid modes: 'config', 'critical'`);
+    }
+  }
 
   logger.info('Starting EC2 start/stop scheduler...');
 

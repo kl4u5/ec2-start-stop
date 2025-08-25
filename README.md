@@ -52,6 +52,47 @@ Format
   inheritance support and non-critical options
 - **🔗 Notification Inheritance**: Sophisticated inheritance system allowing
   schedules to inherit or override master notification settings
+- **🚨 Admin Critical Failures**: Automatic admin notifications for system-wide
+  failures
+- **🧪 Testing Framework**: Built-in testing modes for configuration validation
+  and notification testing
+- **🔧 Centralized Validation**: Consolidated regex patterns for consistent
+  validation across the system
+- **🌍 International Phone Support**: Support for international phone numbers
+  (10-15 digits)
+
+## Recent Improvements
+
+This project has been enhanced with several key improvements for better
+reliability and testing:
+
+### 🧪 Testing Framework
+
+- **Configuration Testing**: Test Parameter Store configuration validation
+  without affecting normal operations
+- **Critical Failure Testing**: Test admin notification system with real test
+  notifications
+- **Validation Testing**: Comprehensive validation of schedules, timezones,
+  emails, and phone numbers
+
+### 🚨 Enhanced Error Handling
+
+- **Admin Critical Failure Notifications**: Automatic alerts when the entire
+  system fails
+- **Centralized Validation**: Consolidated regex patterns in constants for
+  consistency
+- **International Phone Support**: Enhanced phone validation supporting 10-15
+  digit international numbers
+- **Parameter Protection**: Backup/restore scripts prevent CDK from overwriting
+  custom configurations
+
+### 🔧 System Reliability
+
+- **Per-Phone SMS Logic**: Fixed SMS notification logic to handle '!' prefix per
+  individual phone number
+- **Improved Logging**: Enhanced debug logging with configurable log levels
+- **Better Error Messages**: More descriptive error messages for troubleshooting
+- **Cross-Platform Support**: Scripts work on Windows, macOS, and Linux
 
 ## Architecture
 
@@ -149,6 +190,78 @@ The system supports a sophisticated inheritance-based notification system:
 - **Default**: SMS sent only for critical failures (start/stop failures)
 - **Non-Critical SMS**: Prefix phone numbers with `!` to receive all
   notifications
+- **International Format**: Supports international phone numbers with 10-15
+  digits (e.g., +45XXXXXXXX for Denmark, +1XXXXXXXXXX for US)
+- **Automatic Deduplication**: Prevents duplicate notifications when inheriting
+
+### Admin Critical Failure Notifications
+
+The system includes automatic admin notifications for critical system-wide
+failures:
+
+- **Email Alerts**: Detailed email notifications sent to `masterEmails` when the
+  entire scheduler fails
+- **SMS Alerts**: Critical SMS notifications sent to all configured
+  `masterPhones`
+- **Comprehensive Details**: Failure notifications include error details,
+  timestamp, and recommended actions
+- **Immediate Escalation**: Notifies administrators when ALL scheduled instances
+  might be affected
+
+**When triggered:**
+
+- Configuration loading failures
+- AWS service permission errors
+- System-wide exceptions that prevent normal operation
+
+### Testing Framework
+
+The system includes comprehensive testing functionality for validation and
+debugging:
+
+#### Configuration Testing
+
+Test configuration validation without affecting normal operations:
+
+```bash
+# Test configuration validation
+aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"config"}' test-output.json
+
+# View test results
+cat test-output.json
+```
+
+**What it tests:**
+
+- ✅ Parameter Store configuration loading
+- ✅ JSON schema validation
+- ✅ Schedule configuration syntax
+- ✅ Notification inheritance resolution
+- ✅ Timezone validation
+- ✅ Email and phone number format validation
+
+#### Critical Failure Testing
+
+Test admin notification system for critical failures:
+
+```bash
+# Test critical failure notifications
+aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"critical"}' test-output.json
+
+# View test results
+cat test-output.json
+```
+
+**What it tests:**
+
+- ✅ Admin email notification delivery
+- ✅ Admin SMS notification delivery
+- ✅ Notification formatting and content
+- ✅ Error handling for notification failures
+- ✅ Master notification inheritance
+
+**Note:** This sends actual test notifications to configured admin contacts.
+
 - **Automatic Deduplication**: Prevents duplicate notifications when inheriting
 
 ### Dynamic Configuration
@@ -424,6 +537,21 @@ pnpm run deploy   # Deploy if changes look good
 
 ### Managing Schedules
 
+#### Testing System Health
+
+Before managing schedules, you can test your system configuration:
+
+```bash
+# Test configuration validation
+aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"config"}' test-config.json && cat test-config.json
+
+# Test admin critical failure notifications (sends real test notifications)
+aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"critical"}' test-critical.json && cat test-critical.json
+```
+
+These testing modes help verify your configuration and notification setup
+without affecting normal EC2 operations.
+
 #### View Current Configuration
 
 ```bash
@@ -543,14 +671,40 @@ changes and failures, plus SMS alerts for critical failures:
 
 4. **SMS Setup (Optional - for critical failure alerts)**:
 
+   **Verify your phone number in Amazon SNS (Required for SMS delivery):**
+
    ```bash
-   # No pre-verification needed for SMS - works immediately after deployment
-   # Just ensure your phone number is in international format: +45XXXXXXXX
+   # Check if SNS is in sandbox mode (restricts SMS to verified numbers only)
+   aws sns get-sms-sandbox-account-status --profile your-profile
+
+   # Add your phone number for verification (sends verification SMS)
+   aws sns create-sms-sandbox-phone-number --phone-number "+45XXXXXXXX" --profile your-profile
+
+   # Check verification status
+   aws sns list-sms-sandbox-phone-numbers --profile your-profile
+
+   # Verify with the code you receive via SMS
+   aws sns verify-sms-sandbox-phone-number --phone-number "+45XXXXXXXX" --one-time-password "123456" --profile your-profile
    ```
+
+   **SNS Sandbox Mode vs Production Mode:**
+   - **Sandbox Mode (Default)**: Only verified phone numbers can receive SMS -
+     **perfect for admin alerts**
+   - **Production Mode**: Can send SMS to any phone number (requires AWS
+     approval)
+   - **Recommendation**: Stay in sandbox mode unless you need to send alerts to
+     multiple unverified recipients
+
+   **Why Sandbox Mode Works Great Here:**
+   - ✅ Only sends SMS to verified admin phone numbers (more secure)
+   - ✅ Lower risk of accidental SMS spam or misconfiguration
+   - ✅ $1 USD monthly spend limit protects against unexpected charges
+   - ✅ No approval process needed - works immediately after phone verification
 
    **SMS Configuration:**
    - Configure phone numbers in Parameter Store schedule configuration
-   - Use international format (e.g., +45XXXXXXXX)
+   - Use international format with 10-15 digits (e.g., +45XXXXXXXX for Denmark,
+     +1XXXXXXXXXX for US)
    - Prefix with `!` for non-critical notifications (e.g., !+45XXXXXXXX)
    - SMS sent for critical failures by default, non-critical optional
    - Cost: ~€0.0395 per SMS to Denmark (~0.30 DKK per SMS)
@@ -560,6 +714,14 @@ changes and failures, plus SMS alerts for critical failures:
 ```bash
 # View recent logs
 aws logs tail /aws/lambda/ec2-start-stop-function --follow
+
+# Test configuration without affecting normal operations
+aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"config"}' test-output.json
+cat test-output.json
+
+# Test admin notifications (sends actual test notifications)
+aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"critical"}' test-output.json
+cat test-output.json
 ```
 
 #### Verify EC2 Instance Tags
@@ -715,13 +877,17 @@ pnpm run build
 │   └── ec2-start-stop-stack.ts    # CDK stack definition
 ├── lambda/
 │   ├── src/
-│   │   ├── index.ts               # Lambda function handler
+│   │   ├── index.ts               # Lambda function handler with testing modes
 │   │   ├── types.ts               # TypeScript interfaces and validation
-│   │   ├── constants.ts           # Application constants
+│   │   ├── constants.ts           # Application constants and validation patterns
+│   │   ├── validation.ts          # Centralized validation functions
 │   │   └── default-config.ts      # Default schedule configuration
 │   ├── dist/                      # Compiled Lambda code (generated)
 │   ├── package.json               # Lambda dependencies
 │   └── tsconfig.json              # Lambda TypeScript config
+├── scripts/
+│   ├── backup-parameter.js        # Parameter Store backup script
+│   └── restore-parameter.js       # Parameter Store restore script
 ├── test/
 │   ├── lambda.test.ts             # Lambda function tests
 │   └── stack.test.ts              # CDK stack tests
@@ -730,6 +896,7 @@ pnpm run build
 ├── tsconfig.json                  # TypeScript configuration
 ├── vitest.config.ts               # Test configuration
 ├── cdk.json                       # CDK configuration
+├── .gitignore                     # Git ignore patterns (excludes backup files)
 └── README.md                      # This documentation
 ```
 
@@ -785,19 +952,30 @@ The scheduler pays for itself within hours of deployment!
 
 ### Common Issues
 
-| Issue                  | Symptoms                              | Solution                                                |
-| ---------------------- | ------------------------------------- | ------------------------------------------------------- |
-| **Schedule not found** | "references unknown schedule" in logs | Add schedule to Parameter Store config                  |
-| **Invalid timezone**   | "invalid timezone" error              | Use valid IANA timezone (e.g., "UTC", "Europe/London")  |
-| **No instances found** | "No instances found with tag"         | Verify tag key is exactly `start-stop-schedule`         |
-| **Permission denied**  | IAM errors in logs                    | Check Lambda execution role has EC2 and SSM permissions |
-| **Schedule disabled**  | "schedule disabled" in logs           | Set `"enabled": true` in schedule config                |
+| Issue                    | Symptoms                              | Solution                                                                             |
+| ------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Schedule not found**   | "references unknown schedule" in logs | Add schedule to Parameter Store config                                               |
+| **Invalid timezone**     | "invalid timezone" error              | Use valid IANA timezone (e.g., "UTC", "Europe/London")                               |
+| **No instances found**   | "No instances found with tag"         | Verify tag key is exactly `start-stop-schedule`                                      |
+| **Permission denied**    | IAM errors in logs                    | Check Lambda execution role has EC2 and SSM permissions                              |
+| **Schedule disabled**    | "schedule disabled" in logs           | Set `"enabled": true` in schedule config                                             |
+| **Invalid phone format** | "Invalid phone format" in logs        | Use international format with 10-15 digits: +45XXXXXXXX                              |
+| **SMS not received**     | SMS sent in logs but not received     | Verify phone number in SNS: `aws sns list-sms-sandbox-phone-numbers`                 |
+| **SNS sandbox mode**     | SMS delivery blocked                  | Verify phone: `aws sns create-sms-sandbox-phone-number --phone-number "+45XXXXXXXX"` |
+| **Configuration errors** | JSON parsing errors                   | Test config with: `{"test":"config"}` payload                                        |
+| **Admin notifications**  | Critical failures not notified        | Test admin alerts with: `{"test":"critical"}` payload                                |
 
 ### Debug Commands
 
 ```bash
-# Test Lambda function manually
+# Test Lambda function manually (normal operation)
 aws lambda invoke --function-name ec2-start-stop-function --payload '{}' output.json
+
+# Test configuration validation
+aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"config"}' config-test.json
+
+# Test critical failure notifications (sends real notifications)
+aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"critical"}' critical-test.json
 
 # View Parameter Store configuration
 aws ssm get-parameter --name "/ec2-start-stop/schedules" | jq .Parameter.Value
@@ -829,8 +1007,36 @@ transitions for IANA timezones.
 **Q: Can I test schedules before deploying?** A: Yes, use the test suite:
 `pnpm test` and review the mock scenarios.
 
+**Q: How do I test my configuration without affecting EC2 instances?** A: Use
+the testing framework:
+
+- `aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"config"}'`
+  for configuration testing
+- `aws lambda invoke --function-name ec2-start-stop-function --payload '{"test":"critical"}'`
+  for notification testing
+
+**Q: What phone number formats are supported?** A: International format with
+10-15 digits (e.g., +45XXXXXXXX for Denmark, +1XXXXXXXXXX for US). Prefix with
+'!' for non-critical notifications.
+
+**Q: Why am I not receiving SMS notifications even though logs show they were
+sent?** A: Your SNS account is likely in sandbox mode, which only delivers SMS
+to verified phone numbers. Verify your phone number with:
+
+```bash
+aws sns create-sms-sandbox-phone-number --phone-number "+45XXXXXXXX" --profile your-profile
+aws sns verify-sms-sandbox-phone-number --phone-number "+45XXXXXXXX" --one-time-password "CODE" --profile your-profile
+```
+
+**Q: How do I check if my phone number is verified for SMS?** A: Use:
+
+```bash
+aws sns list-sms-sandbox-phone-numbers --profile your-profile
+```
+
 **Q: What happens if Lambda fails?** A: EventBridge will retry on the next
-15-minute interval. Check CloudWatch Logs for errors.
+15-minute interval. Admin notifications are sent for critical failures. Check
+CloudWatch Logs for errors.
 
 **Q: Can I use this with Auto Scaling Groups?** A: Individual instances in ASGs
 can be managed, but consider ASG scheduling instead for better integration.
