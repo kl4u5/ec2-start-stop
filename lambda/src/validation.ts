@@ -3,7 +3,7 @@
  * Comprehensive validation for schedule configurations and individual components
  */
 
-import { WEEKDAY_KEYS } from './constants';
+import { VALIDATION_PATTERNS, WEEKDAY_KEYS } from './constants';
 import type { Schedule, SchedulesConfiguration } from './interfaces';
 
 /**
@@ -151,15 +151,12 @@ export function validateSingleTime(time: string): boolean {
  * Validates email format
  */
 function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return VALIDATION_PATTERNS.EMAIL.test(email);
 }
 
 /**
  * Validates phone format (supports '!' prefix for non-critical SMS)
  */
 function isValidPhone(phone: string): boolean {
-  // Regex allows optional '!' prefix, then +[1-9] followed by 9-14 more digits
-  const phoneRegex = /^!?\+[1-9]\d{9,14}$/;
-  return phoneRegex.test(phone);
+  return VALIDATION_PATTERNS.PHONE.test(phone);
 }

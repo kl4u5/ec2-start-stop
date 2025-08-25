@@ -69,3 +69,10 @@ export const ACTIONS = {
 
 // Weekday keys (matching Schedule interface)
 export const WEEKDAY_KEYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const;
+
+// Validation regex patterns
+export const VALIDATION_PATTERNS = {
+  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  PHONE: /^!?\+[1-9]\d{9,14}$/,
+  PHONE_CLEAN: /^\+[1-9]\d{9,14}$/,
+} as const;

@@ -37,6 +37,7 @@ import {
   SEPARATORS,
   TAG_NAMES,
   TIME_FORMATS,
+  VALIDATION_PATTERNS,
   WEEKDAY_KEYS,
 } from './constants';
 
@@ -118,8 +119,7 @@ async function sendSingleEmailNotification(
   }
 
   // Basic email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  if (!VALIDATION_PATTERNS.EMAIL.test(email)) {
     logger.error(`Invalid email format '${email}' - skipping email notification for ${type}: ${instanceId}`);
     return;
   }
@@ -226,8 +226,7 @@ async function sendSingleSmsNotification(
   const cleanPhone = phone.startsWith('!') ? phone.slice(1) : phone;
 
   // Basic phone number validation (international format)
-  const phoneRegex = /^\+[1-9]\d{10,14}$/;
-  if (!phoneRegex.test(cleanPhone)) {
+  if (!VALIDATION_PATTERNS.PHONE_CLEAN.test(cleanPhone)) {
     logger.error(
       `Invalid phone format '${cleanPhone}' - must be in format +45XXXXXXXX - skipping SMS notification for ${type}: ${instanceId}`
     );
@@ -333,8 +332,7 @@ Severity: CRITICAL`;
       const cleanPhone = phone.startsWith('!') ? phone.slice(1) : phone;
 
       // Basic phone number validation
-      const phoneRegex = /^\+[1-9]\d{9,14}$/;
-      if (!phoneRegex.test(cleanPhone)) {
+      if (!VALIDATION_PATTERNS.PHONE_CLEAN.test(cleanPhone)) {
         logger.error(`Invalid admin phone format '${cleanPhone}' - skipping SMS notification`);
         continue;
       }
