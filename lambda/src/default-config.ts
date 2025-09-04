@@ -94,12 +94,10 @@ export const DEFAULT_SCHEDULES_CONFIG: SchedulesConfiguration = {
   logLevel: 'INFO', // Default log level
   schedules: [
     {
-      name: 'sps-tid-server',
+      name: '',
       enabled: true,
       timezone: 'Europe/Berlin',
       default: '06:00;22:00',
-      sa: '08:00;18:00',
-      su: '08:00;22:00',
       emails: ['inherited'], // Default: inherit from master
       phones: ['inherited'], // Default: inherit from master
     },
