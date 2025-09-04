@@ -94,7 +94,7 @@ export const DEFAULT_SCHEDULES_CONFIG: SchedulesConfiguration = {
   logLevel: 'INFO', // Default log level
   schedules: [
     {
-      name: '',
+      name: 'sps-tid-server',
       enabled: true,
       timezone: 'Europe/Berlin',
       default: '06:00;22:00',
